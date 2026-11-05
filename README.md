@@ -7,6 +7,7 @@
 > [安装 Install](README_INSTALL.md) · [新手导航 Newbie guide](README_NEWBIE.md) · [中文说明 C1M1 notes](README_CN.md) · [参数手册 Parameters](doc/PARAM_GUIDE_C1M1.md) · [代码精读 Code notes](doc/CODE_NOTES_CN.md)
 >
 > 和上游的差异见 [README_CN.md 第 12 节](README_CN.md)。
+> 上游作者与贡献者名单、以及 Contributors 里为何有一个 AI 条目：见 [README_CN.md](README_CN.md) 开头。
 
 # 🛡️ Robust RPLIDAR ROS 2 Driver
 

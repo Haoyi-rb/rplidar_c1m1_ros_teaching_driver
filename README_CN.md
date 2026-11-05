@@ -6,6 +6,19 @@
 原驱动的架构和功能都保留，修复了 3 个 bug（详见第 12 节），另外加了 C1M1 配置、RViz 配置、一个看门狗示例和中文文档。
 英文原版说明见 [README.md](README.md)。
 
+**上游作者与贡献者**：本仓库 `main` 上共 67 个提交，其中 **64 个来自上游 v1.4.2**，3 个由本教学分支新增。
+上游作者按提交数：**frozenreboot**（51；git 里显示为 `wj` 与 `JWJ | frozenreboot` 两个署名，同一邮箱）、
+**cosmicog**（8，`interpolated_rays` 插值算法就是他贡献的）、**Błażej Sowa**（4）、**Filip Szkudlarek**（1）。
+本仓库所有上游历史原样保留，未改写任何提交，因此 `git blame` 和上游追溯都还能用。
+
+> **为什么 Contributors 面板里会出现 `Claude`？**
+> 因为上游提交 `8ff33b0`（feat: Add standby mode）的提交信息里带了 3 行
+> `Co-authored-by: Claude Opus 5 <noreply@anthropic.com>` 尾注 —— GitHub 会把共同作者也计入贡献者面板。
+> 另有 `e41b573`、`72d9716` 只是在正文里写了 `Generated-by: Anthropic Claude ...`，
+> 那属于普通文字，**不会**产生贡献者条目。
+> 这些都是**上游作者自己写的 AI 协作披露**，本仓库原样保留、未删改任何提交；
+> 它反映的是上游的原始声明，与本教学分支的改动无关。
+
 **建议的阅读顺序**：
 
 | 顺序 | 文档 | 什么时候看 |
