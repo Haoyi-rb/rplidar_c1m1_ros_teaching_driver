@@ -103,9 +103,6 @@ RPlidarNode::~RPlidarNode() {
 // Lifecycle Callbacks
 // ============================================================================
 
-// 【教学注释】configure：准备工具（读参数 -> 造驱动 -> 试连串口 -> 建发布者）
-// 注意：这里串口连不上只打 WARN，不返回 FAILURE。真正的"连上为止"交给
-// activate 之后的 scan_loop 状态机，所以即使先启动节点再插雷达也能工作。
 RPlidarNode::CallbackReturn
 RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
   RCLCPP_INFO(this->get_logger(), "[Lifecycle] Configuring node...");
@@ -116,9 +113,6 @@ RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
   // ------------------------------------------------------------------------
   // 1. Driver instantiation (simple factory: real vs dummy)
   // ------------------------------------------------------------------------
-  // 【人话】接口抽象的好处在这里：driver_ 的类型是 LidarDriverInterface，
-  // 后面的代码不关心它是真雷达还是假雷达。dummy_mode:=true 时不接硬件
-  // 也能跑通整个节点，方便没有雷达的同学调试。
   if (params_.dummy_mode) {
     RCLCPP_WARN(this->get_logger(),
                 "[Driver] DUMMY MODE ENABLED - using synthetic scan data.");
@@ -225,9 +219,8 @@ RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
   // 7. Diagnostics setup
   // ------------------------------------------------------------------------
   diagnostic_updater_.setHardwareID("rplidar-" + params_.serial_port);
-  // 【填坑】diagnostic_updater_ 是成员变量，cleanup 不会清空它。如果不先删掉
-  // 旧任务，每次重新 configure 都会多注册一个，/diagnostics 里出现重复的
-  // "RPLidar Status"。第一次 configure 时没有旧任务，删除操作什么也不做。
+  // Remove the task registered by a previous configure, if any.
+  // [CN][fix] 否则重新 configure 后诊断条目会重复。见 README_CN 9.1。
   diagnostic_updater_.removeByName("RPLidar Status");
   diagnostic_updater_.add("RPLidar Status", this,
                           &RPlidarNode::update_diagnostics);
@@ -235,10 +228,6 @@ RPlidarNode::on_configure(const rclcpp_lifecycle::State &) {
   return CallbackReturn::SUCCESS;
 }
 
-// 【教学注释】activate：把雷达从待机叫醒
-// 这个函数本身很快就返回了，它只做两件事：打开发布者、启动后台线程。
-// 连串口、开电机、读数据这些慢活全在 scan_loop 线程里做，
-// 所以 `ros2 lifecycle set ... activate` 不会因为硬件慢而卡住。
 RPlidarNode::CallbackReturn
 RPlidarNode::on_activate(const rclcpp_lifecycle::State &state) {
   RCLCPP_INFO(this->get_logger(), "[Lifecycle] Activating node...");
@@ -258,16 +247,12 @@ RPlidarNode::on_activate(const rclcpp_lifecycle::State &state) {
   auto_standby_engaged_ = false;
 
   // Start scan loop thread.
-  // 【人话】先把开关置 true，再开线程；线程里 while(is_scanning_) 一直跑。
   is_scanning_ = true;
   scan_thread_ = std::thread(&RPlidarNode::scan_loop, this);
 
   return CallbackReturn::SUCCESS;
 }
 
-// 【教学注释】deactivate：让雷达回到待机
-// 顺序很重要：先让线程停下(join 等它真正退出)，再停发布者和电机。
-// 如果反过来，线程可能还在往一个已经关掉的发布者里发数据。
 RPlidarNode::CallbackReturn
 RPlidarNode::on_deactivate(const rclcpp_lifecycle::State &state) {
   RCLCPP_INFO(this->get_logger(), "[Lifecycle] Deactivating node...");
@@ -290,7 +275,6 @@ RPlidarNode::on_deactivate(const rclcpp_lifecycle::State &state) {
   return CallbackReturn::SUCCESS;
 }
 
-// 【教学注释】cleanup：关串口、销毁驱动对象，节点回到 unconfigured。
 RPlidarNode::CallbackReturn
 RPlidarNode::on_cleanup(const rclcpp_lifecycle::State &) {
   RCLCPP_INFO(this->get_logger(), "[Lifecycle] Cleaning up resources...");
@@ -360,18 +344,7 @@ void RPlidarNode::init_parameters() {
  *  - STANDBY      : Motor stopped (service request or 'auto_standby' with no
  *                   subscribers), connection kept alive
  */
-// 【教学注释】为什么要单独开线程跑这个循环？
-//   grab_scan_data() 是"阻塞"的：调用后要一直等到雷达转完一圈、数据收齐
-//   才返回；USB 被拔掉时还要等到超时。如果在主线程(执行器线程)里这样等，
-//   参数修改回调、stop_motor 服务、diagnostics 统统排不上队，整个节点像
-//   卡死了一样。放到独立线程后，主线程永远空闲，随时能响应命令。
-//
-//   代价是两个线程会同时碰 driver_，所以用 driver_mutex_ 上锁；
-//   跨线程共享的标志位都用 std::atomic。
-//
-//   另外，思岚 SDK 内部(AsyncTransceiver)还有两个线程：一个专门从串口收
-//   字节放进 _rxQueue，一个从队列取出来解包。所以这里的"读一圈"拿到的
-//   已经是解好的测量点。
+// [CN] 为什么单开线程、状态机怎么转：见 doc/CODE_NOTES_CN.md 第 1、2 节。
 void RPlidarNode::scan_loop() {
   // Initialize FSM state for this thread
   current_state_.store(DriverState::CONNECTING);
@@ -454,8 +427,7 @@ void RPlidarNode::scan_loop() {
     // State 1: CONNECTING
     // -----------------------------------------------------------------
     case DriverState::CONNECTING: {
-      // 【人话】打开串口。失败（没插、没权限、端口号不对）就睡 1 秒再试，
-      // 拔插 USB 后就是在这里一直转圈，直到你把线插回去。
+      // [CN] 打开串口；失败就睡 1 秒重试（拔着 USB 时一直停在这里）。
 
       // Ensure driver instance exists
       if (!driver_) {
@@ -508,8 +480,7 @@ void RPlidarNode::scan_loop() {
     // State 2: CHECK_HEALTH
     // -----------------------------------------------------------------
     case DriverState::CHECK_HEALTH: {
-      // 【人话】问雷达自检结果：0=正常 1=警告 都可以继续；
-      // 2=错误时先发一次软复位，还不行就断开重连。
+      // [CN] 自检：0/1 继续；2 先软复位一次，还不行就断开重连。
 
       int health = driver_->getHealth();
       if (health == 0 || health == 1) { // OK or Warning
@@ -544,7 +515,7 @@ void RPlidarNode::scan_loop() {
     // State 3: WARMUP
     // -----------------------------------------------------------------
     case DriverState::WARMUP: {
-      // 【人话】启动电机并选择扫描模式（C1 一般是 Standard）。
+      // [CN] 启动电机、选扫描模式。
 
       RCLCPP_INFO(this->get_logger(), "[FSM] Starting motor...");
 
@@ -578,9 +549,7 @@ void RPlidarNode::scan_loop() {
     // State 4: RUNNING
     // -----------------------------------------------------------------
     case DriverState::RUNNING: {
-      // 【人话】正常工作：上锁 -> 读一圈 -> 解锁 -> 发布 /scan。
-      // 读失败就计数，连续失败超过 max_retries 次就认为硬件掉线了。
-      // 注意 publish_scan 在锁外面调用，避免发布消息时还占着串口。
+      // [CN] 上锁读一圈 -> 解锁 -> 发布；连续失败 > max_retries 次判定掉线。
 
       std::vector<sl_lidar_response_measurement_node_hq_t> nodes;
       rclcpp::Time start_time = this->now();
@@ -631,8 +600,7 @@ void RPlidarNode::scan_loop() {
     // State 5: RESETTING
     // -----------------------------------------------------------------
     case DriverState::RESETTING: {
-      // 【人话】拔 USB 后会走到这里：把旧的驱动对象整个扔掉重建，
-      // 因为旧对象里的串口句柄已经失效了。等 2 秒后回到 CONNECTING。
+      // [CN] 掉线后重建整个驱动对象（旧串口句柄已失效），2 秒后回 CONNECTING。
 
       RCLCPP_WARN(this->get_logger(),
                   "[FSM] Performing hardware reset (recreating driver)...");
@@ -786,12 +754,10 @@ void RPlidarNode::update_diagnostics(
   // --------------------------------------------------------------------------
   // [Internal State] Report Driver FSM Status (Only when Active)
   // --------------------------------------------------------------------------
-  // 【填坑】原版这里会 lock_guard(driver_mutex_)。但这个函数根本不碰 driver_，
-  // 只读 atomic 变量、params_ 和 cached_device_info_。而 scan 线程拔 USB 时会
-  // 拿着 driver_mutex_ 等串口超时（每次约 2 秒），诊断回调在主线程里抢这把锁，
-  // 就把整个单线程执行器堵住了：get_state、lifecycle 命令全都要排队
-  // （实测 4.2 秒）。
-  // 修法：不再加 driver_mutex_；需要保护的只有字符串，用 info_mutex_。
+  // No driver_mutex_ here: this runs on the executor thread, and the scan
+  // thread may hold that mutex across serial timeouts. Only atomics, params_
+  // and cached_device_info_ (guarded by info_mutex_) are read.
+  // [CN][fix] 拔 USB 时主线程曾被这把锁卡住 4 秒。见 README_CN 9.3。
 
   // Read current FSM state from atomic variable
   DriverState state = current_state_.load();
@@ -831,7 +797,7 @@ void RPlidarNode::update_diagnostics(
 
   // Additional metadata
   stat.add("Serial Port", params_.serial_port);
-  stat.add("Target RPM", params_.rpm); // 只在主线程的参数回调里写，同线程读
+  stat.add("Target RPM", params_.rpm); // written only on this thread
   {
     std::lock_guard<std::mutex> info_lock(info_mutex_);
     stat.add("Device Info", cached_device_info_);
@@ -1073,9 +1039,6 @@ void RPlidarNode::publish_scan(
 // Dynamic Parameter Callback
 // ============================================================================
 
-// 【教学注释】在线改参数：`ros2 param set /rplidar_node rpm 600` 会调用这里
-// 这个回调在主线程执行，而 scan 线程可能正在读串口，所以第一行就上锁，
-// 等 scan 线程读完这一圈再改。驱动没连上时直接拒绝修改。
 rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
     const std::vector<rclcpp::Parameter> &parameters) {
   std::lock_guard<std::mutex> lock(driver_mutex_);

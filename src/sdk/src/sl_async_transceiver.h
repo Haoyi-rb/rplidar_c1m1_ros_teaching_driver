@@ -160,8 +160,6 @@ protected:
 			}
 		}
 	};
-	// [Teaching note] 串口收到的原始字节块排在这里：_rxThread 往里放，
-	// _decoderThread 从里取。两个线程共用，所以存取时都会加锁。
 	std::list< Buffer * > _rxQueue;
 };
 

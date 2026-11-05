@@ -1,8 +1,20 @@
 # C1M1 教学版 RPLIDAR ROS 2 驱动
 
+[README.md](README.md) · [安装](README_INSTALL.md) · [新手导航](README_NEWBIE.md) · **中文说明** · [参数手册](doc/PARAM_GUIDE_C1M1.md) · [代码精读](doc/CODE_NOTES_CN.md)
+
 基于 [frozenreboot/rplidar_driver](https://github.com/frozenreboot/rplidar_driver) 的教学分支 `teaching/c1m1`。
-原驱动的功能一行没改，只加了中文注释、C1M1 配置、一个看门狗示例和这份文档。
+原驱动的架构和功能都保留，修复了 3 个 bug（详见第 12 节），另外加了 C1M1 配置、RViz 配置、一个看门狗示例和中文文档。
 英文原版说明见 [README.md](README.md)。
+
+**建议的阅读顺序**：
+
+| 顺序 | 文档 | 什么时候看 |
+|---|---|---|
+| 1 | [README_INSTALL.md](README_INSTALL.md) | 第一次在这台电脑上用：装 ROS 2、编译、串口权限 |
+| 2 | [README_NEWBIE.md](README_NEWBIE.md) | 想做某件事，不知道该改哪个文件、哪个函数 |
+| 3 | 本页 | 真机实测数据、拔插行为、填坑记录、和上游的差异 |
+| 4 | [doc/PARAM_GUIDE_C1M1.md](doc/PARAM_GUIDE_C1M1.md) | 调参数：每个参数改了会怎样 |
+| 5 | [doc/CODE_NOTES_CN.md](doc/CODE_NOTES_CN.md) | 读源码：核心函数为什么这么写 |
 
 环境：Ubuntu 22.04 + ROS 2 Humble。
 
@@ -159,7 +171,7 @@ ros2 lifecycle set /rplidar_node activate     # 把雷达从待机叫醒
 | `rpm` | `ros2 param set /rplidar_node rpm 600` | 0~1200，0 = 型号默认 | 立即改转速，电机不停。**C1M1 实测无效，见下方** |
 | `scan_mode` | `ros2 param set /rplidar_node scan_mode Standard` | 设备支持的模式名 | **会停电机再重启**，失败自动回到默认模式 |
 | `auto_standby` | `ros2 param set /rplidar_node auto_standby true` | true/false | 没人订阅 `/scan` 时自动停电机 |
-| `publish_point_cloud` | `ros2 param set /rplidar_node publish_point_cloud true` | true/false | 额外发布 `/cloud`（PointCloud2） |
+| `publish_point_cloud` | `ros2 param set /rplidar_node publish_point_cloud true` | true/false | 额外发布 `/cloud`（PointCloud2）。**注意：在线打开只翻转内部标志并打印日志，并不会立刻产生 `/cloud`** —— `cloud_pub_` 是 lifecycle 发布者，`on_activate()` 只在节点 ACTIVE 且该参数已为 true 时才调用。要真的出点云，先 `ros2 lifecycle set /rplidar_node deactivate` 再 `activate`，或重新 launch |
 | 其他参数（`serial_port`、`frame_id` 等） | — | — | 运行中改了不生效，需要改 `param/c1m1.yaml` 后重新 launch |
 
 - 驱动没连上雷达时（比如 USB 拔着），所有在线修改都会被拒绝：`Driver not ready`。
@@ -230,9 +242,11 @@ ros2 run rplidar_driver scan_watchdog.py --ros-args -p timeout_sec:=5.0
 
 ## 7. 想改代码去哪儿
 
+更完整的版本（含搜索关键词）见 [README_NEWBIE.md 第 3 节](README_NEWBIE.md)；每个函数为什么这么写见 [doc/CODE_NOTES_CN.md](doc/CODE_NOTES_CN.md)。
+
 | 我想… | 去这里 |
 |---|---|
-| 理解整体流程 | `include/rplidar_node.hpp` 顶部 `DriverState` 的注释 |
+| 理解整体流程 | `include/rplidar_node.hpp` 顶部 `DriverState` 的注释，配合 `doc/CODE_NOTES_CN.md` 第 1、2 节 |
 | 改启动/暂停时做的事 | `src/rplidar_node.cpp` 的 `on_configure` / `on_activate` / `on_deactivate` |
 | 改掉线重连的逻辑（重试次数、等待时间） | `src/rplidar_node.cpp` 的 `scan_loop()`，`CONNECTING` 和 `RESETTING` 两个 case |
 | 改发布出去的 `/scan` 内容（角度、过滤、强度） | `src/rplidar_node.cpp` 的 `publish_scan()` |
@@ -242,7 +256,7 @@ ros2 run rplidar_driver scan_watchdog.py --ros-args -p timeout_sec:=5.0
 | 改 launch 默认值（是否开 RViz、默认串口） | `launch/c1m1.launch.py` 里的 `DeclareLaunchArgument` |
 | 改和 SDK 打交道的代码（型号识别、开电机、读数据） | `src/lidar_driver_wrapper.cpp` |
 | 改假雷达生成的数据 | `src/lidar_driver_wrapper.cpp` 里的 `DummyLidarDriver` |
-| 看串口收数据的底层线程 | `src/sdk/src/sl_async_transceiver.cpp` 的 `_proc_rxThread` / `_proc_decoderThread`（SDK 代码，一般不要改） |
+| 看串口收数据的底层线程 | `src/sdk/src/sl_async_transceiver.cpp` 的 `_proc_rxThread` / `_proc_decoderThread`（SDK 代码，一般不要改；讲解见 `doc/CODE_NOTES_CN.md` 第 2 节） |
 
 改完记得：`cd ~/c1m1_ros && colcon build --symlink-install && source install/setup.bash`。
 Python 示例用了 `--symlink-install`，改完不用重新编译；C++ 改了必须重新编译。
@@ -431,6 +445,10 @@ scan 线程释放锁的时间极短，马上又去读串口、再等约 2 秒超
 | 文件 | 作用 |
 |---|---|
 | `README_CN.md` | 本文档 |
+| `README_INSTALL.md` | 零基础安装指南：ROS 2 Humble、编译、`ROS_DOMAIN_ID`、串口权限、udev |
+| `README_NEWBIE.md` | 新手导航：想做某件事该去哪个文件、哪个函数、搜哪个关键词 |
+| `doc/PARAM_GUIDE_C1M1.md` | 参数调优手册：每个参数改了会怎样，含 C1M1 实测数据和调速验证实验 |
+| `doc/CODE_NOTES_CN.md` | 核心代码精读：`scan_loop`、`update_diagnostics`、`parameters_callback`、`publish_scan`、wrapper 层为什么这么写 |
 | `param/c1m1.yaml` | C1M1 专用参数：波特率 460800、`/dev/ttyUSB0`、`frame_id: laser`、`publish_tf: false`。原版 `param/rplidar.yaml` 不动 |
 | `launch/c1m1.launch.py` | 一行命令启动驱动 + RViz。只在第一次 configure 后自动 activate 一次，不会撤销你手动的 deactivate/cleanup |
 | `rviz/c1m1.rviz` | RViz 配置：俯视图、Fixed Frame `laser`、网格、坐标轴、LaserScan（Best Effort） |
@@ -478,18 +496,22 @@ drv_->disconnect();                                       // getDeviceInfo 失�
 | `package.xml` | 新增 `exec_depend`：`rclpy`（看门狗）、`rviz2`（launch 里的 RViz） |
 | `.gitignore` | 忽略 `*.log`（真机测试日志） |
 
-### 12.3 只加了中文注释、没动逻辑的地方
+### 12.3 只加了注释、没动逻辑的地方
+
+源码里**上游的英文注释全部保留**。中文只加在两类地方：状态机的一行简注（`[CN]`），和修过 bug 的位置（`[CN][fix]`，指向第 9 节）。
+"为什么这么写"的长解释都放在 [doc/CODE_NOTES_CN.md](doc/CODE_NOTES_CN.md)。
 
 | 文件 | 新增注释行数 | 注释在哪 |
 |---|---|---|
-| `include/rplidar_node.hpp` | 52 | `DriverState` 状态图和每个状态、类说明（为什么用 Lifecycle）、各 `on_*` 回调、`scan_loop()`、`scan_thread_` / `is_scanning_` / `current_state_` / `driver_mutex_` |
-| `src/rplidar_node.cpp` | 49 | `on_configure` / `on_activate` / `on_deactivate` / `on_cleanup`、`scan_loop()` 开头（为什么单开线程）、5 个 `case` 分支、`parameters_callback()` |
+| `include/rplidar_node.hpp` | 14 | `DriverState` 状态图和每个状态、4 个 `on_*` 回调各一行、`init_param` 和 `info_mutex_` 的修复说明 |
+| `src/rplidar_node.cpp` | 12 | `scan_loop()` 开头一行指向文档、5 个 `case` 分支各一行、`on_configure` 和 `update_diagnostics` 的修复说明 |
 | `include/lidar_driver_wrapper.hpp` | 11 | 接口抽象层（"插座和插头"）、Real / Dummy 两个实现 |
-| `src/sdk/src/sl_async_transceiver.cpp` | 4 | `_proc_rxThread`（收字节）、`_proc_decoderThread`（解包） |
-| `src/sdk/src/sl_async_transceiver.h` | 2 | `_rxQueue`（两个线程共用的队列） |
+| `src/lidar_driver_wrapper.cpp` | 3 | `connect()` 的修复说明 |
+| `src/sdk/` | 0 | 思岚 SDK 保持原样 |
 
 > `git diff` 里 `DriverState` 枚举的 6 行显示为"删除 + 新增"，实际只是在每行末尾加了注释，枚举值和顺序都没变。
-> 上表的注释行数包含 12.2 那几处 bug 修复旁边的 `【填坑】` 注释（这些注释本身也不影响逻辑）。
+> 上表的注释行数包含修复位置旁边的英文和 `[CN][fix]` 注释（这些注释本身也不影响逻辑）。
+> `param/rplidar.yaml` 保持上游原样；中文参数说明在 `param/c1m1.yaml` 和参数手册里。
 
 ### 12.4 自己动手看差异
 

@@ -93,18 +93,11 @@
 
 namespace rplidar_driver {
 
-// 【教学注释】驱动内部状态机
-// （跑在 scan_loop 线程里，和 ROS Lifecycle 是两层东西）
-//
-//   ROS Lifecycle（外层）：unconfigured -> inactive -> active，由 launch 或
-//                          `ros2 lifecycle set` 控制，回答"节点要不要干活"。
-//   DriverState（内层）：只在 active 时运行，回答"雷达硬件现在怎么样"。
-//
+// [CN] 内层状态机，只在 Lifecycle 为 active 时由 scan_loop 线程运行。
 //   CONNECTING -> CHECK_HEALTH -> WARMUP -> RUNNING
-//        ^                                   |  连续读失败超过 max_retries 次
-//        +--------- RESETTING <--------------+  （例如拔了 USB）
-//
-//   拔 USB 时 Lifecycle 仍然是 active，恢复全靠这个内层状态机自己完成。
+//        ^                                   | 连续读失败 > max_retries
+//        +--------- RESETTING <--------------+ （例如拔了 USB）
+// 详解见 doc/CODE_NOTES_CN.md 第 1 节。
 enum class DriverState {
   CONNECTING,   // 打开串口；失败就每秒重试一次
   CHECK_HEALTH, // 问雷达"你身体好吗"，有错误就先软复位一次
@@ -134,14 +127,6 @@ enum class DriverState {
  *  - @ref on_cleanup   : release driver resources
  *  - @ref on_shutdown  : final cleanup for node destruction
  */
-// 【教学注释】为什么继承 LifecycleNode 而不是普通 rclcpp::Node？
-//   普通节点一启动就开始干活，出了问题只能杀进程重来。
-//   Lifecycle 节点把"启动"拆成几步，每一步都能单独触发、单独失败：
-//     configure  = 读参数、创建驱动、尝试打开串口（准备好工具）
-//     activate   = 把雷达从待机叫醒：开发布者、启动读取线程（开工）
-//     deactivate = 让雷达回到待机：停线程、停电机（暂停，但不拆工具）
-//     cleanup    = 关串口、释放驱动对象（把工具收起来）
-//   这样上层系统（比如 Nav2 的 lifecycle_manager）可以统一管理启停顺序。
 class RPlidarNode final : public rclcpp_lifecycle::LifecycleNode {
 public:
   /**
@@ -186,8 +171,7 @@ public:
    * @param state Current lifecycle state.
    * @return SUCCESS on successful configuration, FAILURE otherwise.
    */
-  // 【人话】unconfigured -> inactive：读参数、创建驱动、试着连一次串口。
-  // 连不上也返回 SUCCESS，因为 activate 之后的状态机会继续重试。
+  // [CN] unconfigured -> inactive：读参数、造驱动、试连串口。
   CallbackReturn on_configure(const rclcpp_lifecycle::State &state) override;
 
   /**
@@ -200,8 +184,7 @@ public:
    * @param state Current lifecycle state.
    * @return SUCCESS if activation succeeds, FAILURE otherwise.
    */
-  // 【人话】inactive -> active：把雷达从待机叫醒。
-  // 打开 /scan 发布者，并启动后台线程 scan_thread_ 去跑 scan_loop()。
+  // [CN] inactive -> active：把雷达从待机叫醒（开发布者、启动 scan 线程）。
   CallbackReturn on_activate(const rclcpp_lifecycle::State &state) override;
 
   /**
@@ -214,8 +197,7 @@ public:
    * @param state Current lifecycle state.
    * @return SUCCESS on successful deactivation, FAILURE otherwise.
    */
-  // 【人话】active -> inactive：让雷达回到待机。
-  // 通知线程退出并等它结束(join)，关发布者，停电机；串口不关。
+  // [CN] active -> inactive：让雷达回到待机（停线程、停电机，串口不关）。
   CallbackReturn on_deactivate(const rclcpp_lifecycle::State &state) override;
 
   /**
@@ -229,7 +211,7 @@ public:
    * @param state Current lifecycle state.
    * @return SUCCESS on successful cleanup, FAILURE otherwise.
    */
-  // 【人话】inactive -> unconfigured：关串口、销毁驱动对象，回到刚启动的样子。
+  // [CN] inactive -> unconfigured：关串口、销毁驱动对象。
   CallbackReturn on_cleanup(const rclcpp_lifecycle::State &state) override;
 
   /**
@@ -263,13 +245,7 @@ private:
    * Declare the parameter and immediately assign its value to the variable
    * The current value of 'variable' is used as the default value
    */
-  // 【填坑】原版这里无条件 declare_parameter。ROS 2 规定同一个参数只能
-  // declare 一次，而 on_configure 每次都会调用这里，所以
-  // cleanup -> configure 第二次时会抛异常
-  // "parameter 'serial_port' has already been declared"，
-  // 节点卡在 unconfigured。
-  // 修法：已经声明过就只读取当前值
-  // （这样也保留了运行中 param set 改过的值）。
+  // [CN][fix] 参数只能 declare 一次。见 README_CN 9.1。
   template <typename T> void init_param(const std::string &name, T &variable) {
     if (this->has_parameter(name)) {
       variable = this->get_parameter(name).template get_value<T>();
@@ -289,11 +265,6 @@ private:
    *
    * The loop terminates when @ref is_scanning_ is set to false.
    */
-  // 【人话】后台线程的主函数，内层状态机 DriverState 就在这里面。
-  // 为什么不在主线程里读？grab_scan_data() 读串口时会一直等到一圈数据
-  // 收齐（几十到上百毫秒），雷达掉线时还会等到超时。主线程负责处理
-  // 参数修改、服务调用、diagnostics，如果它卡在读串口上，这些全都会
-  // 跟着卡死。所以读串口单独放一个线程，主线程永远保持能响应。
   void scan_loop();
 
   /**
@@ -560,17 +531,12 @@ private:
   diagnostic_updater::Updater diagnostic_updater_;
 
   /// Background thread responsible for running @ref scan_loop().
-  // 【人话】跑 scan_loop() 的后台线程。
-  // on_activate 创建它，on_deactivate 等它退出(join)。
   std::thread scan_thread_;
 
   /// Flag indicating whether the scan loop should be running.
-  // 【人话】主线程通知后台线程"该下班了"的开关。用 atomic 是因为两个
-  // 线程同时读写同一个变量，普通 bool 可能读到半新半旧的值。
   std::atomic<bool> is_scanning_{false};
 
   /// share fsm state across threads
-  // 【人话】内层状态。只有 scan_loop 线程会改它，diagnostics 等其他线程只读。
   std::atomic<DriverState> current_state_{DriverState::CONNECTING};
 
   /// Standby explicitly requested through the services, consumed by
@@ -586,15 +552,11 @@ private:
   std::atomic<bool> auto_standby_engaged_{false};
 
   /// Mutex protecting access to the driver instance from multiple threads.
-  // 【人话】driver_ 这把"锁"。读数据(scan 线程)和改 RPM(参数回调，
-  // 主线程)都要通过同一个串口和雷达说话，如果同时发命令，串口上的字节
-  // 会混在一起。谁要用 driver_ 就先 lock_guard 上锁，用完自动解锁。
   std::mutex driver_mutex_;
 
-  // 【填坑】只保护 cached_device_info_ 的小锁。
-  // scan 线程写，诊断回调(主线程)读。
-  // 持有时间只有一次字符串拷贝，主线程不会被串口超时拖住。
-  // 不要用 driver_mutex_ 保护它：那把锁会被 scan 线程在等串口时长时间占用。
+  /// Guards cached_device_info_ only (held for one string copy). Do not use
+  /// driver_mutex_ for this: the scan thread holds it across serial timeouts.
+  // [CN][fix] 见 README_CN 9.3。
   std::mutex info_mutex_;
 
   /// Cached device information string for diagnostics and logging.

@@ -1,3 +1,13 @@
+> **📘 C1M1 教学版 / C1M1 Teaching Fork**
+> 本仓库是 [frozenreboot/rplidar_driver](https://github.com/frozenreboot/rplidar_driver) v1.4.2 的教学分支（`teaching/c1m1`），
+> 面向使用 RPLIDAR C1M1 的新生。下面的英文内容是上游原版说明，保持不变。
+> This is a teaching fork of upstream v1.4.2 for RPLIDAR C1M1. The English text below is the unmodified upstream README.
+>
+> **中文文档 / Chinese docs**：
+> [安装 Install](README_INSTALL.md) · [新手导航 Newbie guide](README_NEWBIE.md) · [中文说明 C1M1 notes](README_CN.md) · [参数手册 Parameters](doc/PARAM_GUIDE_C1M1.md) · [代码精读 Code notes](doc/CODE_NOTES_CN.md)
+>
+> 和上游的差异见 [README_CN.md 第 12 节](README_CN.md)。
+
 # 🛡️ Robust RPLIDAR ROS 2 Driver
 
 [![ROS 2 Humble](https://img.shields.io/badge/ROS2-Humble-blue.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/humble/)
