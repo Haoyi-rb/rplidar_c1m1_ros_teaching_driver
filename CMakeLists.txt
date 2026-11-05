@@ -83,7 +83,7 @@ install(
   RUNTIME DESTINATION bin)
 
 # Install launch files, parameters, and configurations
-install(DIRECTORY launch param config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch param config rviz DESTINATION share/${PROJECT_NAME})
 
 # Teaching example (C1M1 fork)
 install(PROGRAMS examples/scan_watchdog.py DESTINATION lib/${PROJECT_NAME})

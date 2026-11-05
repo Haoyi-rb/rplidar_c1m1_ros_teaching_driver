@@ -9,6 +9,7 @@ arguments a beginner usually needs.
   ros2 launch rplidar_driver c1m1.launch.py
   ros2 launch rplidar_driver c1m1.launch.py serial_port:=/dev/ttyUSB1
   ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true
+  ros2 launch rplidar_driver c1m1.launch.py rviz:=false   # headless / SSH
 """
 
 import os
@@ -19,8 +20,9 @@ from launch.actions import DeclareLaunchArgument, EmitEvent, LogInfo
 from launch.actions import RegisterEventHandler
 from launch.event_handlers import OnProcessStart
 from launch.events import matches_action
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import LifecycleNode
+from launch_ros.actions import LifecycleNode, Node
 from launch_ros.event_handlers import OnStateTransition
 from launch_ros.events.lifecycle import ChangeState
 from launch_ros.parameter_descriptions import ParameterValue
@@ -44,6 +46,14 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             "publish_tf", default_value="false",
             description="true = publish a zero base_link -> laser TF."),
+        DeclareLaunchArgument(
+            "rviz", default_value="true",
+            description="true = also open RViz with rviz/c1m1.rviz. "
+                        "Use false on a robot without a display."),
+        DeclareLaunchArgument(
+            "rviz_config",
+            default_value=os.path.join(share_dir, "rviz", "c1m1.rviz"),
+            description="RViz config file."),
     ]
 
     driver_node = LifecycleNode(
@@ -98,4 +108,16 @@ def generate_launch_description() -> LaunchDescription:
         )
     )
 
-    return LaunchDescription(args + [driver_node, configure_event, activate_event])
+    # RViz is an ordinary node, independent of the driver lifecycle: it just
+    # subscribes to /scan. Fixed Frame 'laser' needs no TF.
+    rviz_node = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2",
+        output="log",
+        arguments=["-d", LaunchConfiguration("rviz_config")],
+        condition=IfCondition(LaunchConfiguration("rviz")),
+    )
+
+    return LaunchDescription(
+        args + [driver_node, configure_event, activate_event, rviz_node])

@@ -21,16 +21,25 @@ source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 
-# 3) 启动驱动
+# 3) 启动驱动 + RViz（一行命令，会自动弹出 RViz 窗口，看到绿色的点就成功了）
 ros2 launch rplidar_driver c1m1.launch.py
 
-# 4) 另开终端看数据
+# 4) 另开终端看频率（应约 10 Hz）
 ros2 topic hz /scan
-rviz2      # Fixed Frame 填 laser，Add -> LaserScan -> Topic 选 /scan
-           # 注意 LaserScan 显示里把 Reliability 改成 Best Effort
 ```
 
-没有雷达也能练习：`ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true`，会发布模拟数据。
+| 想要 | 命令 |
+|---|---|
+| 没有雷达也能练习（模拟数据） | `ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true` |
+| 不开 RViz（机器人上没有显示器、SSH 远程） | `ros2 launch rplidar_driver c1m1.launch.py rviz:=false` |
+| 用自己保存的 RViz 配置 | `ros2 launch rplidar_driver c1m1.launch.py rviz_config:=/path/to/my.rviz` |
+
+RViz 配置在 `rviz/c1m1.rviz`：俯视图，Fixed Frame 是 `laser`（不需要 TF），1 m 网格，
+红色轴是雷达正前方（+X），绿色轴是左边（+Y），点云是绿色方块。
+
+> ⚠️ **避坑：自己开 rviz2 看不到点？**
+> 驱动用 SensorDataQoS（Best Effort）发布 `/scan`。RViz 里 LaserScan 默认是 Reliable，两边不匹配就一个点都收不到，
+> 也不报错。在 LaserScan → Topic → Reliability Policy 里改成 **Best Effort**。`rviz/c1m1.rviz` 已经设好了。
 
 ---
 
@@ -229,6 +238,8 @@ ros2 run rplidar_driver scan_watchdog.py --ros-args -p timeout_sec:=5.0
 | 改发布出去的 `/scan` 内容（角度、过滤、强度） | `src/rplidar_node.cpp` 的 `publish_scan()` |
 | 加一个新参数 | `include/rplidar_node.hpp` 里的 `Parameters` 结构体 → `init_parameters()` → 需要在线改的话再加到 `parameters_callback()` |
 | 改 C1 的默认配置（串口、frame_id） | `param/c1m1.yaml` |
+| 改 RViz 显示（颜色、点大小、视角） | `rviz/c1m1.rviz`；或在 RViz 里调好后 File → Save Config As 另存，再用 `rviz_config:=` 加载 |
+| 改 launch 默认值（是否开 RViz、默认串口） | `launch/c1m1.launch.py` 里的 `DeclareLaunchArgument` |
 | 改和 SDK 打交道的代码（型号识别、开电机、读数据） | `src/lidar_driver_wrapper.cpp` |
 | 改假雷达生成的数据 | `src/lidar_driver_wrapper.cpp` 里的 `DummyLidarDriver` |
 | 看串口收数据的底层线程 | `src/sdk/src/sl_async_transceiver.cpp` 的 `_proc_rxThread` / `_proc_decoderThread`（SDK 代码，一般不要改） |
@@ -255,7 +266,7 @@ USB 被拔时还要等到超时（约 2 秒）。如果在主线程里读，这�
 
 ## 9. 填坑记录
 
-下面三个坑都是本教学分支修掉的上游问题，每一条都写了现象、原因、修法和怎么验证。
+下面三个坑都是本教学分支修掉的上游问题（代码位置汇总见第 12.2 节），每一条都写了现象、原因、修法和怎么验证。
 
 ### 9.1 cleanup 之后无法再 configure
 
@@ -404,3 +415,93 @@ scan 线程释放锁的时间极短，马上又去读串口、再等约 2 秒超
 
 - 本分支代码里有中文注释，上游仓库的 pre-commit 检查禁止非 ASCII 字符，所以这个分支不能直接给上游提 PR。
   如果要把第 9 节的修复贡献给上游，需要单独开一个只含英文的分支。
+
+---
+
+## 12. 本项目与上游原版的差异
+
+对比基准：上游 [frozenreboot/rplidar_driver](https://github.com/frozenreboot/rplidar_driver) 的 `v1.4.2`
+（commit `4446f8f`，即本仓库的 `main` 分支）。本节内容来自 `git diff main`。
+
+**一句话**：驱动的核心架构（Lifecycle、scan 线程、状态机、SDK）一点没换；真正改动逻辑的只有 3 处 bug 修复，
+共新增 25 行、删除 9 行（不含注释）。其余都是新增的教学文件和中文注释。
+
+### 12.1 完全新增的文件
+
+| 文件 | 作用 |
+|---|---|
+| `README_CN.md` | 本文档 |
+| `param/c1m1.yaml` | C1M1 专用参数：波特率 460800、`/dev/ttyUSB0`、`frame_id: laser`、`publish_tf: false`。原版 `param/rplidar.yaml` 不动 |
+| `launch/c1m1.launch.py` | 一行命令启动驱动 + RViz。只在第一次 configure 后自动 activate 一次，不会撤销你手动的 deactivate/cleanup |
+| `rviz/c1m1.rviz` | RViz 配置：俯视图、Fixed Frame `laser`、网格、坐标轴、LaserScan（Best Effort） |
+| `examples/scan_watchdog.py` | 看门狗示例：订阅 `/scan`，3 秒无数据就按 Lifecycle 状态处理（见第 6 节） |
+
+### 12.2 改了逻辑的地方（重点看这里）
+
+| 文件 | 函数 | 改了什么 | 为什么 |
+|---|---|---|---|
+| `include/rplidar_node.hpp` | `init_param()` | `declare_parameter` 前先 `has_parameter`，已声明就 `get_parameter` | 第 9.1 节：cleanup 后无法再 configure |
+| `src/rplidar_node.cpp` | `on_configure()` | `diagnostic_updater_.add()` 前加 `removeByName("RPLidar Status")` | 第 9.1 节：重复的诊断条目 |
+| `src/lidar_driver_wrapper.cpp` | `RealLidarDriver::connect()` | `getDeviceInfo()` 失败分支加 `drv_->disconnect()` | 第 9.2 节：误报 A-series |
+| `include/rplidar_node.hpp` | 成员变量 | 新增 `std::mutex info_mutex_` | 第 9.3 节 |
+| `src/rplidar_node.cpp` | `scan_loop()`，CONNECTING 分支 | 先写局部变量 `info`，再加 `info_mutex_` 写入 `cached_device_info_` | 第 9.3 节：原来写入时没加锁 |
+| `src/rplidar_node.cpp` | `update_diagnostics()` | 删掉 `lock_guard(driver_mutex_)`；读 `cached_device_info_` 时加 `info_mutex_` | 第 9.3 节：主线程被串口超时堵住 |
+
+关键代码一共就这些：
+
+```cpp
+// include/rplidar_node.hpp —— init_param()
+if (this->has_parameter(name)) {
+  variable = this->get_parameter(name).template get_value<T>();
+} else {
+  variable = this->declare_parameter<T>(name, variable);
+}
+std::mutex info_mutex_;                                   // 新成员
+
+// src/rplidar_node.cpp —— on_configure()
+diagnostic_updater_.removeByName("RPLidar Status");
+
+// src/rplidar_node.cpp —— update_diagnostics()
+- std::lock_guard<std::mutex> lock(driver_mutex_);        // 删掉
++ { std::lock_guard<std::mutex> info_lock(info_mutex_);
++   stat.add("Device Info", cached_device_info_); }
+
+// src/lidar_driver_wrapper.cpp —— connect()
+drv_->disconnect();                                       // getDeviceInfo 失败时
+```
+
+构建和配置文件（不影响驱动行为）：
+
+| 文件 | 改动 |
+|---|---|
+| `CMakeLists.txt` | `install(DIRECTORY ...)` 里加 `rviz`；新增 `install(PROGRAMS examples/scan_watchdog.py ...)` |
+| `package.xml` | 新增 `exec_depend`：`rclpy`（看门狗）、`rviz2`（launch 里的 RViz） |
+| `.gitignore` | 忽略 `*.log`（真机测试日志） |
+
+### 12.3 只加了中文注释、没动逻辑的地方
+
+| 文件 | 新增注释行数 | 注释在哪 |
+|---|---|---|
+| `include/rplidar_node.hpp` | 52 | `DriverState` 状态图和每个状态、类说明（为什么用 Lifecycle）、各 `on_*` 回调、`scan_loop()`、`scan_thread_` / `is_scanning_` / `current_state_` / `driver_mutex_` |
+| `src/rplidar_node.cpp` | 49 | `on_configure` / `on_activate` / `on_deactivate` / `on_cleanup`、`scan_loop()` 开头（为什么单开线程）、5 个 `case` 分支、`parameters_callback()` |
+| `include/lidar_driver_wrapper.hpp` | 11 | 接口抽象层（"插座和插头"）、Real / Dummy 两个实现 |
+| `src/sdk/src/sl_async_transceiver.cpp` | 4 | `_proc_rxThread`（收字节）、`_proc_decoderThread`（解包） |
+| `src/sdk/src/sl_async_transceiver.h` | 2 | `_rxQueue`（两个线程共用的队列） |
+
+> `git diff` 里 `DriverState` 枚举的 6 行显示为"删除 + 新增"，实际只是在每行末尾加了注释，枚举值和顺序都没变。
+> 上表的注释行数包含 12.2 那几处 bug 修复旁边的 `【填坑】` 注释（这些注释本身也不影响逻辑）。
+
+### 12.4 自己动手看差异
+
+```bash
+cd ~/c1m1_ros/rplidar_driver
+git diff main --stat                      # 每个文件改了多少行
+git diff main -- src/lidar_driver_wrapper.cpp   # 看某个文件的完整改动
+
+# 只看改了逻辑的行（过滤掉注释和空行）。输出约 46 行，其中 12 行是 DriverState 枚举（只加了行尾注释）
+git diff main -U0 -- src include | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' \
+  | grep -vE '^[+-]\s*//' | grep -vE '^[+-]\s*$'
+```
+
+改动是**读代码的路线图**：先看 12.2 的 6 处，再对照第 9 节理解每处为什么要改；
+其余代码按 12.3 的注释从 `include/rplidar_node.hpp` 的 `DriverState` 开始读。
