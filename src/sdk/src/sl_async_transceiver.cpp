@@ -298,6 +298,9 @@ u_result AsyncTransceiver::sendMessage(message_autoptr_t& msg)
 
 sl_result AsyncTransceiver::_proc_rxThread()
 {
+    // [Teaching note] 收线程：只负责一件事，从串口把字节读出来塞进 _rxQueue。
+    // waitForDataExt 最多等 1000ms，所以拔掉 USB 时这个线程不会永远卡住。
+
     assert(_bindedChannel);
 
     rp::hal::Thread::SetSelfPriority(rp::hal::Thread::PRIORITY_HIGH);
@@ -371,6 +374,9 @@ sl_result AsyncTransceiver::_proc_rxThread()
 
 sl_result AsyncTransceiver::_proc_decoderThread()
 {
+    // [Teaching note] 解包线程：从 _rxQueue 取字节，按思岚协议拼成测量点。
+    // 收和解分两个线程，是为了解包慢一点时也不会漏收串口数据。
+
 
     assert(_bindedChannel);
     rp::hal::Thread::SetSelfPriority(rp::hal::Thread::PRIORITY_HIGH);

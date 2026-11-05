@@ -1,0 +1,29 @@
+# C1M1 teaching profile.
+# Values follow the official sllidar_ros2 sllidar_c1_launch.py.
+# Full parameter documentation: param/rplidar.yaml
+rplidar_node:
+  ros__parameters:
+    # C1 enumerates as a CP2102N USB-serial bridge. Check with: ls /dev/ttyUSB*
+    serial_port: "/dev/ttyUSB0"
+    # C1 requires 460800 (the default 1000000 in rplidar.yaml is for S-series).
+    serial_baudrate: 460800
+    frame_id: "laser"
+    angle_compensate: true
+    scan_mode: "Standard"
+    # 0 = model default
+    rpm: 0
+    auto_standby: false
+    interpolated_rays: false
+    computed_ray_count: 1450
+    use_intensities: false
+    max_distance: 0.0
+    dummy_mode: false
+    # Off: the robot description should own base_link -> laser.
+    # Turn on only for standalone testing without a robot TF tree.
+    publish_tf: false
+    qos_policy: "sensor_data"
+    max_retries: 3
+    angle_offset: 0.0
+    symmetric_angle_range: false
+    publish_point_cloud: false
+    intensities_as_angles: false

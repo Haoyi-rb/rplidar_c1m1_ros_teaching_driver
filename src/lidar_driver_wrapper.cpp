@@ -138,6 +138,10 @@ bool RealLidarDriver::connect(const std::string &port, sl_u32 baudrate,
     std::cerr << "[Driver] Failed to get device info (data may be corrupted)."
               << std::endl;
     std::memset(&devinfo_, 0, sizeof(devinfo_));
+    // 【填坑】上面 drv_->connect() 已经成功，SDK 内部的"已连接"标志是 true。
+    // 不在这里断开的话，下一轮 isConnected() 仍返回 true，状态机会跳过重连，
+    // 拿全零的设备信息去识别型号（Model ID 0 -> "A-series"）并做健康检查。
+    drv_->disconnect();
     return false;
   }
 

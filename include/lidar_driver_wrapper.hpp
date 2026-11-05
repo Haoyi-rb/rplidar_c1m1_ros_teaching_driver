@@ -138,6 +138,14 @@ struct DriverProfile {
  * Higher-level code should depend only on this interface, not on any concrete
  * implementation or on the vendor SDK types directly.
  */
+// 【教学注释】接口抽象层（Wrapper）
+//   可以把它想成墙上的"插座标准"：节点代码(rplidar_node.cpp)只认这些
+//   函数名(connect / start_motor / grab_scan_data ...)，不直接调用思岚 SDK。
+//   插在插座上的"插头"有两种：
+//     RealLidarDriver  - 真雷达，内部调用 sl::ILidarDriver (思岚 SDK)
+//     DummyLidarDriver - 假雷达，生成模拟数据，不需要硬件
+//   好处：换 SDK 版本只改 wrapper；写单元测试可以用 Dummy；节点逻辑更干净。
+//   想支持新雷达？新写一个类继承 LidarDriverInterface，实现这些纯虚函数即可。
 class LidarDriverInterface {
 public:
   virtual ~LidarDriverInterface() = default;
@@ -285,6 +293,8 @@ public:
  *  - Applying geometric compensation according to @ref DriverProfile
  *  - Handling scan acquisition and basic error reporting
  */
+// 【人话】真雷达实现，代码在 src/lidar_driver_wrapper.cpp。
+// C1 的型号识别也在那里。
 class RealLidarDriver : public LidarDriverInterface {
 public:
   /**
@@ -397,6 +407,7 @@ enum class MockDriverState {
  * @class DummyLidarDriver
  * @brief Lightweight mock driver for simulation, testing, or CI environments.
  */
+// 【人话】假雷达，launch 时加 dummy_mode:=true 就会用它。
 class DummyLidarDriver : public LidarDriverInterface {
 public:
   /// Construct a dummy driver in a disconnected state.

@@ -85,6 +85,9 @@ install(
 # Install launch files, parameters, and configurations
 install(DIRECTORY launch param config DESTINATION share/${PROJECT_NAME})
 
+# Teaching example (C1M1 fork)
+install(PROGRAMS examples/scan_watchdog.py DESTINATION lib/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   # Linting Tests
   find_package(ament_lint_auto REQUIRED)

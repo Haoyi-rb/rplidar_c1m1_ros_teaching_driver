@@ -17,3 +17,6 @@ compile_commands.json
 # Python cache
 __pycache__/
 *.pyc
+
+# Test logs (local hardware test runs)
+*.log
