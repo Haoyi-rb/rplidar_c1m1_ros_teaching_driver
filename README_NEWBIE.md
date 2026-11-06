@@ -27,7 +27,7 @@
 
 ```bash
 # ① 装依赖、编译、把编译结果告诉当前终端
-cd ~/c1m1_ros && source /opt/ros/humble/setup.bash && rosdep install --from-paths rplidar_driver --ignore-src -y && colcon build --symlink-install --packages-select rplidar_c1m1_teaching_driver && source install/setup.bash
+cd ~/c1m1_ros && source /opt/ros/humble/setup.bash && rosdep install --from-paths rplidar_c1m1_teaching_driver --ignore-src -y && colcon build --symlink-install --packages-select rplidar_c1m1_teaching_driver && source install/setup.bash
 
 # ② 启动驱动 + RViz
 ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py

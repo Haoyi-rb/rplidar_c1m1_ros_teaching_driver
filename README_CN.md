@@ -529,7 +529,7 @@ drv_->disconnect();                                       // getDeviceInfo 失�
 ### 12.4 自己动手看差异
 
 ```bash
-cd ~/c1m1_ros/rplidar_driver
+cd ~/c1m1_ros/rplidar_c1m1_teaching_driver
 git diff main --stat                      # 每个文件改了多少行
 git diff main -- src/lidar_driver_wrapper.cpp   # 看某个文件的完整改动
 

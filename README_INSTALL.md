@@ -66,25 +66,25 @@ rosdep update
 本教学版**还没有公开**，代码向带你的学长学姐要（实验室 git 服务器、U 盘都行）。
 **不要**直接 clone 上游 `github.com/frozenreboot/rplidar_driver`：那是原版，没有 C1M1 配置、看门狗和这些文档。
 
-放到 `~/c1m1_ros/rplidar_driver`，然后切到教学版：
+放到 `~/c1m1_ros/rplidar_c1m1_teaching_driver`，然后切到教学版：
 
 ```bash
 mkdir -p ~/c1m1_ros
 cd ~/c1m1_ros
-# git clone <学长给你的仓库地址> rplidar_driver
-cd rplidar_driver
+# git clone <学长给你的仓库地址> rplidar_c1m1_teaching_driver
+cd rplidar_c1m1_teaching_driver
 git checkout teaching/c1m1        # 或者某个发布标签，例如 c1m1-v0.3
 git log --oneline -1              # 确认在教学版上
 ```
 
 ### 3.2 装依赖、编译
 
-**一定要在 `~/c1m1_ros` 下编译**，不要在 `~`（会把家目录里所有工程都扫一遍），也不要在 `rplidar_driver` 里面（会在包里生成 build 目录）。
+**一定要在 `~/c1m1_ros` 下编译**，不要在 `~`（会把家目录里所有工程都扫一遍），也不要在 `rplidar_c1m1_teaching_driver` 里面（会在包里生成 build 目录）。
 
 ```bash
 cd ~/c1m1_ros
 source /opt/ros/humble/setup.bash
-rosdep install --from-paths rplidar_driver --ignore-src -y
+rosdep install --from-paths rplidar_c1m1_teaching_driver --ignore-src -y
 colcon build --symlink-install
 ```
 
@@ -172,7 +172,7 @@ udevadm info -q property -n /dev/ttyUSB0 | grep -E "ID_VENDOR_ID|ID_MODEL_ID|ID_
 插拔几次之后，雷达可能从 `ttyUSB0` 变成 `ttyUSB1`，驱动就连不上了。用 udev 规则给它一个固定名字 `/dev/rplidar`：
 
 ```bash
-cd ~/c1m1_ros/rplidar_driver
+cd ~/c1m1_ros/rplidar_c1m1_teaching_driver
 ./scripts/create_udev_rules.sh        # 会要 sudo 密码
 ```
 
