@@ -25,6 +25,24 @@
 
 ---
 
+## ⚠️ 硬件限制清单（调参之前先看）
+
+下面这些是 **C1M1 的物理 / 固件限制，不是配置没生效**，别在它们身上耗时间：
+
+| 限制 | 实测表现 | 怎么验证 |
+|---|---|---|
+| **不支持动态修改 RPM** | 设 360 / 480 / 600 / 720 / 900，`/scan` 始终约 10 Hz；`param set` 仍返回成功 | `ros2 topic hz /scan` |
+| RPM 取值范围 0~1200 | 超出（如 9999）被参数回调拒绝：`RPM must be between 0 and 1200` | `ros2 param set /rplidar_node rpm 9999` |
+| 串口波特率固定 460800 | 用 1000000（上游默认）一个点都收不到，SDK 报数据可能损坏 | `ros2 param get /rplidar_node serial_baudrate` |
+| 在线开 `publish_point_cloud` 不生效 | 只翻标志位、打印日志，`/cloud` 不会出现，需 deactivate → activate | `ros2 topic list \| grep cloud` |
+
+> ⚠️ **C1M1（FW 1.2）固件物理限制：不支持动态修改 RPM，转速恒定约 10 Hz。**
+> 请通过 `ros2 topic hz /scan` 验证，具体见 [参数调优指南](README_NEWBIE.md)。
+
+完整实测数据（5 组 rpm 对照表）见 [README_CN.md 第 5 节](README_CN.md)。
+
+---
+
 ## ⚙️ 进阶操作：修改雷达参数
 
 > ⚠️ **硬件限制警告（C1 专属）**：思岚 C1M1（FW 1.2）物理硬件**不支持动态修改电机转速**。
