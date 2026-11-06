@@ -1,8 +1,13 @@
 # C1M1 教学级 ROS 2 驱动
 
+![ROS2 Humble](https://img.shields.io/badge/ROS2-Humble-blue)
+![Platform](https://img.shields.io/badge/Platform-Ubuntu%2022.04-orange)
+![Status](https://img.shields.io/badge/Status-Stable-green)
+![LiDAR](https://img.shields.io/badge/LiDAR-RPLIDAR%20C1M1-blueviolet)
+
 > ⚠️ **本仓库是基于原版高性能驱动的二次开发版，专为思岚 C1M1 与新手教学定制。**
 > 原版驱动的默认配置是给 S 系列用的（串口波特率 **1000000**），C1M1 用它**一个数据点都收不到**。
-> 在 C1M1 上，只认下面那一条启动命令。
+> 在 C1M1 上，**启动只认「🚀 唯一正确的启动方式」那一节**里的命令。
 
 ---
 
@@ -17,6 +22,38 @@
 | 想读核心函数为什么这么写 | [代码精读 doc/CODE_NOTES_CN.md](doc/CODE_NOTES_CN.md) |
 
 推荐顺序：**安装 → 新手导航 → 中文说明**。这三份读完，你就能独立改这个驱动了。
+
+---
+
+## ⚙️ 进阶操作：修改雷达参数
+
+> ⚠️ **硬件限制警告（C1 专属）**：思岚 C1M1（FW 1.2）物理硬件**不支持动态修改电机转速**。
+> 即便通过参数设置了，实际转速也始终锁定在 10Hz 左右。请勿在此浪费时间，
+> 具体请查阅 [参数调优指南](README_NEWBIE.md)。
+
+```bash
+# 尝试修改转速（因硬件限制，C1 上无效；用 ros2 topic hz /scan 观察实际频率）
+ros2 param set /rplidar_node rpm 480
+
+# 尝试切换扫描模式（部分固件可能支持）
+ros2 param set /rplidar_node scan_mode "Standard"
+```
+
+命令都会返回 `Set parameter successful`，日志也会打印 `Updating RPM to 480`——**但转速不会变**。
+这是硬件行为，不是你配错了。本仓库真机实测数据如下（[README_CN.md 第 5 节](README_CN.md)）：
+
+| 设置的 rpm | `/scan` 实测频率 |
+|---|---|
+| 360 | 9.997 Hz |
+| 480 | 10.004 Hz |
+| 600 | 10.009 Hz |
+| 720 | 10.010 Hz |
+| 900 | 10.007 Hz |
+
+顺带两个已知边界：
+
+- 超出 `0~1200` 的值（例如 `9999`）会被参数回调直接拒绝：`RPM must be between 0 and 1200`
+- 在线改 `rpm` 不会联动 `computed_ray_count`，开了 `interpolated_rays` 时画面可能出现空洞
 
 ---
 
