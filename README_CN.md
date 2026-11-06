@@ -47,7 +47,7 @@ colcon build --symlink-install
 source install/setup.bash
 
 # 3) 启动驱动 + RViz（一行命令，会自动弹出 RViz 窗口，看到绿色的点就成功了）
-ros2 launch rplidar_driver c1m1.launch.py
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py
 
 # 4) 另开终端看频率（应约 10 Hz）
 ros2 topic hz /scan
@@ -55,9 +55,9 @@ ros2 topic hz /scan
 
 | 想要 | 命令 |
 |---|---|
-| 没有雷达也能练习（模拟数据） | `ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true` |
-| 不开 RViz（机器人上没有显示器、SSH 远程） | `ros2 launch rplidar_driver c1m1.launch.py rviz:=false` |
-| 用自己保存的 RViz 配置 | `ros2 launch rplidar_driver c1m1.launch.py rviz_config:=/path/to/my.rviz` |
+| 没有雷达也能练习（模拟数据） | `ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true` |
+| 不开 RViz（机器人上没有显示器、SSH 远程） | `ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py rviz:=false` |
+| 用自己保存的 RViz 配置 | `ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py rviz_config:=/path/to/my.rviz` |
 
 RViz 配置在 `rviz/c1m1.rviz`：俯视图，Fixed Frame 是 `laser`（不需要 TF），1 m 网格，
 红色轴是雷达正前方（+X），绿色轴是左边（+Y），点云是绿色方块。
@@ -171,7 +171,7 @@ ros2 lifecycle set /rplidar_node activate     # 把雷达从待机叫醒
 其他注意：
 - 插回去后设备名可能变成 `/dev/ttyUSB1`（比如旧的还没释放），这时驱动会一直连不上。解决办法：
   执行 `scripts/create_udev_rules.sh` 生成固定别名 `/dev/rplidar`，再用
-  `ros2 launch rplidar_driver c1m1.launch.py serial_port:=/dev/rplidar`。
+  `ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py serial_port:=/dev/rplidar`。
   本次实测插回后仍是 `/dev/ttyUSB0`。
 - 拔插期间看 `/diagnostics` 可以看到当前状态：`ros2 topic echo /diagnostics`。
 
@@ -236,9 +236,9 @@ ros2 service call /start_motor std_srvs/srv/Trigger
 | 找不到节点 | 报错：驱动进程不在了 |
 
 ```bash
-ros2 run rplidar_driver scan_watchdog.py
-ros2 run rplidar_driver scan_watchdog.py --ros-args -p force_restart:=true
-ros2 run rplidar_driver scan_watchdog.py --ros-args -p timeout_sec:=5.0
+ros2 run rplidar_c1m1_teaching_driver scan_watchdog.py
+ros2 run rplidar_c1m1_teaching_driver scan_watchdog.py --ros-args -p force_restart:=true
+ros2 run rplidar_c1m1_teaching_driver scan_watchdog.py --ros-args -p timeout_sec:=5.0
 ```
 
 动手实验：

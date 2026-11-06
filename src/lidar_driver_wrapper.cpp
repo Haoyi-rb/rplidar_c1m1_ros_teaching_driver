@@ -51,7 +51,7 @@
  * @date    2025-12-24
  */
 
-#include "lidar_driver_wrapper.hpp"
+#include "rplidar_c1m1_teaching_driver/lidar_driver_wrapper.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -70,7 +70,7 @@
 
 using namespace sl;
 
-namespace rplidar_driver {
+namespace rplidar_c1m1_teaching_driver {
 
 // ============================================================================
 // [Real Lidar Driver Implementation]
@@ -509,4 +509,4 @@ bool DummyLidarDriver::grab_scan_data(
   return true;
 }
 
-} // namespace rplidar_driver
+} // namespace rplidar_c1m1_teaching_driver

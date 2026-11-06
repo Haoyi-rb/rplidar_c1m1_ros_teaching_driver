@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(rplidar_driver)
+project(rplidar_c1m1_teaching_driver)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -68,7 +68,7 @@ target_link_libraries(
 
 # Register the component to make it discoverable by rclcpp_components
 rclcpp_components_register_node(rplidar_node_component
-  PLUGIN "rplidar_driver::RPlidarNode"
+  PLUGIN "rplidar_c1m1_teaching_driver::RPlidarNode"
   EXECUTOR "SingleThreadedExecutor"
   EXECUTABLE "rplidar_node")
 

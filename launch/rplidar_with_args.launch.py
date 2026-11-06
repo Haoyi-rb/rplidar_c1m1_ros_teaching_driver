@@ -182,7 +182,7 @@ def generate_launch_description() -> LaunchDescription:
     # 2. Lifecycle Node Definition
     # -------------------------------------------------------------------------
     driver_node = LifecycleNode(
-        package="rplidar_driver",
+        package="rplidar_c1m1_teaching_driver",
         executable="rplidar_node",
         name=LaunchConfiguration("node_name"),
         namespace=LaunchConfiguration("namespace"),

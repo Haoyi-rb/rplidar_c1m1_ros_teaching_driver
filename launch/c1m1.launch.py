@@ -6,10 +6,10 @@ Same lifecycle flow as rplidar.launch.py (process start -> CONFIGURE ->
 inactive -> ACTIVATE), but loads param/c1m1.yaml and exposes the few
 arguments a beginner usually needs.
 
-  ros2 launch rplidar_driver c1m1.launch.py
-  ros2 launch rplidar_driver c1m1.launch.py serial_port:=/dev/ttyUSB1
-  ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true
-  ros2 launch rplidar_driver c1m1.launch.py rviz:=false   # headless / SSH
+  ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py
+  ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py serial_port:=/dev/ttyUSB1
+  ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true
+  ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py rviz:=false   # headless / SSH
 """
 
 import os
@@ -30,7 +30,7 @@ from lifecycle_msgs.msg import Transition
 
 
 def generate_launch_description() -> LaunchDescription:
-    share_dir = get_package_share_directory("rplidar_driver")
+    share_dir = get_package_share_directory("rplidar_c1m1_teaching_driver")
 
     args = [
         DeclareLaunchArgument(
@@ -57,7 +57,7 @@ def generate_launch_description() -> LaunchDescription:
     ]
 
     driver_node = LifecycleNode(
-        package="rplidar_driver",
+        package="rplidar_c1m1_teaching_driver",
         executable="rplidar_node",
         name="rplidar_node",
         namespace="",

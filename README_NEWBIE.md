@@ -27,22 +27,22 @@
 
 ```bash
 # ① 装依赖、编译、把编译结果告诉当前终端
-cd ~/c1m1_ros && source /opt/ros/humble/setup.bash && rosdep install --from-paths rplidar_driver --ignore-src -y && colcon build --symlink-install --packages-select rplidar_driver && source install/setup.bash
+cd ~/c1m1_ros && source /opt/ros/humble/setup.bash && rosdep install --from-paths rplidar_driver --ignore-src -y && colcon build --symlink-install --packages-select rplidar_c1m1_teaching_driver && source install/setup.bash
 
 # ② 启动驱动 + RViz
-ros2 launch rplidar_driver c1m1.launch.py
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py
 
 # ③ 另开一个终端，验证数据有没有出来
 ros2 topic hz /scan
 ```
 
-命令 ① 有两个坑，都是新手必踩的：`source /opt/ros/humble/setup.bash` 少执行，编译脚本找不到 ROS 2；`source install/setup.bash` 少执行，`ros2 launch` 会报「找不到包 rplidar_driver」——ROS 2 靠环境变量找包，不靠你当前在哪个目录。
+命令 ① 有两个坑，都是新手必踩的：`source /opt/ros/humble/setup.bash` 少执行，编译脚本找不到 ROS 2；`source install/setup.bash` 少执行，`ros2 launch` 会报「找不到包 rplidar_c1m1_teaching_driver」——ROS 2 靠环境变量找包，不靠你当前在哪个目录。
 （如果机器从没初始化过 rosdep，先跑一次 `sudo rosdep init && rosdep update`。）
 
 ### 没有雷达也能练：dummy_mode
 
 ```bash
-ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true rviz:=false
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true rviz:=false
 ```
 
 `dummy_mode:=true` 的意思是「别碰串口，用一个假雷达对象造数据」。对应代码是 `src/lidar_driver_wrapper.cpp` 里的 `DummyLidarDriver`，找 `sin` 关键字能看到它怎么用正弦波编出一圈点。`rviz:=false` 给没有显示器的机器（SSH 远程）用。
@@ -213,13 +213,13 @@ ros2 run tf2_ros tf2_echo base_link laser
 
 按顺序过一遍清单，前一条不过就别看后一条：
 
-- [ ] `colcon build --symlink-install --packages-select rplidar_driver` 通过，然后 `source install/setup.bash`，并确认没有旧进程还在跑（旧进程不会加载新代码）。
-- [ ] 无硬件先跑：`ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true rviz:=false`，终端能看到 `[FSM] Motor started. Entering RUNNING state.`。
+- [ ] `colcon build --symlink-install --packages-select rplidar_c1m1_teaching_driver` 通过，然后 `source install/setup.bash`，并确认没有旧进程还在跑（旧进程不会加载新代码）。
+- [ ] 无硬件先跑：`ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true rviz:=false`，终端能看到 `[FSM] Motor started. Entering RUNNING state.`。
 - [ ] `ros2 topic hz /scan` 有数据。真雷达约 10 Hz；假数据约 93 Hz（假雷达每圈只睡 10 ms），频率和 `rpm` 都无关，别被它骗了。
 - [ ] `ros2 topic echo /diagnostics --once` 里 `Connection` 不是 `Connecting...`，`Health Code` 不是 `Error`。
 - [ ] RViz（去掉 `rviz:=false`）里绿点铺满一圈。改过角度相关代码就转一下雷达，看点在不在跟着转。
 - [ ] 真机再原样跑一遍，去掉 `dummy_mode`。假数据能跑不等于真雷达能跑：`DummyLidarDriver` 永远不会串口超时、不会掉线、不会有型号识别失败。
-- [ ] 跑单测：`colcon test --packages-select rplidar_driver`，再用 `colcon test-result --verbose` 看哪条挂了。
+- [ ] 跑单测：`colcon test --packages-select rplidar_c1m1_teaching_driver`，再用 `colcon test-result --verbose` 看哪条挂了。
 
 ---
 

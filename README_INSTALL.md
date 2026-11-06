@@ -109,14 +109,14 @@ source ~/.bashrc
 如果大家都用默认的 0，你的 RViz 可能显示的是旁边同学的雷达，`ros2 topic list` 里也会出现别人的话题。
 找带你的人分配一个 1~100 之间的数字。
 
-**确认成功**：新开一个终端，执行 `ros2 pkg prefix rplidar_driver`，能打印出 `.../c1m1_ros/install/rplidar_driver`。
+**确认成功**：新开一个终端，执行 `ros2 pkg prefix rplidar_c1m1_teaching_driver`，能打印出 `.../c1m1_ros/install/rplidar_c1m1_teaching_driver`。
 
 ---
 
 ## 5. 先不接雷达，用假数据跑一遍
 
 ```bash
-ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true
 ```
 
 **确认成功**：
@@ -181,7 +181,7 @@ cd ~/c1m1_ros/rplidar_driver
 以后启动时用这个名字：
 
 ```bash
-ros2 launch rplidar_driver c1m1.launch.py serial_port:=/dev/rplidar
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py serial_port:=/dev/rplidar
 ```
 
 **注意**：这个脚本按芯片型号（`10c4:ea60`）匹配，**所有用 CP210x 芯片的设备都会被叫成 `/dev/rplidar`**，
@@ -193,7 +193,7 @@ ros2 launch rplidar_driver c1m1.launch.py serial_port:=/dev/rplidar
 ## 9. 真机跑起来
 
 ```bash
-ros2 launch rplidar_driver c1m1.launch.py
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py
 ```
 
 **确认成功**：
@@ -211,7 +211,7 @@ ros2 launch rplidar_driver c1m1.launch.py
 全部打勾才算装好：
 
 - [ ] `lsb_release -ds` 是 Ubuntu 22.04
-- [ ] `ros2 pkg prefix rplidar_driver` 能打印路径（新开终端也行）
+- [ ] `ros2 pkg prefix rplidar_c1m1_teaching_driver` 能打印路径（新开终端也行）
 - [ ] `echo $ROS_DOMAIN_ID` 是分配给你的数字，不是空的
 - [ ] `groups` 里有 `dialout`
 - [ ] `dummy_mode:=true` 能在 RViz 里看到一圈点
@@ -223,7 +223,7 @@ ros2 launch rplidar_driver c1m1.launch.py
 
 | 现象 | 原因 | 怎么办 |
 |---|---|---|
-| `Package 'rplidar_driver' not found` | 当前终端没 source `install/setup.bash`，或者没编译成功 | 做第 4 步；或者手动 `source ~/c1m1_ros/install/setup.bash` |
+| `Package 'rplidar_c1m1_teaching_driver' not found` | 当前终端没 source `install/setup.bash`，或者没编译成功 | 做第 4 步；或者手动 `source ~/c1m1_ros/install/setup.bash` |
 | `ros2: command not found` | 没 source `/opt/ros/humble/setup.bash` | 做第 4 步 |
 | `rosdep update` 报网络错误 | 连不上 GitHub | 换网络重试，或用 `rosdepc` |
 | `rosdep install` 报 `Cannot locate rosdep definition` | 没做 `rosdep update` | 做第 2 步 |

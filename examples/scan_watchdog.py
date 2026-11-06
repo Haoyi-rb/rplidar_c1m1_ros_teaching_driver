@@ -15,8 +15,8 @@ scan_watchdog.py —— 教学示例：/scan 看门狗
     查不到        驱动进程不在了（崩溃或没启动），watchdog 救不了，只报错。
 
 运行：
-  ros2 run rplidar_driver scan_watchdog.py
-  ros2 run rplidar_driver scan_watchdog.py --ros-args -p force_restart:=true
+  ros2 run rplidar_c1m1_teaching_driver scan_watchdog.py
+  ros2 run rplidar_c1m1_teaching_driver scan_watchdog.py --ros-args -p force_restart:=true
 """
 
 import time

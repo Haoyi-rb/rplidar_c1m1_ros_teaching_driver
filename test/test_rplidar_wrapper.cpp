@@ -1,4 +1,4 @@
-#include "lidar_driver_wrapper.hpp"
+#include "rplidar_c1m1_teaching_driver/lidar_driver_wrapper.hpp"
 #include <cmath>
 #include <gtest/gtest.h>
 #include <memory>
@@ -10,10 +10,10 @@
 // ============================================================================
 class MockDriverTest : public ::testing::Test {
 protected:
-  std::unique_ptr<rplidar_driver::LidarDriverInterface> driver;
+  std::unique_ptr<rplidar_c1m1_teaching_driver::LidarDriverInterface> driver;
 
   void SetUp() override {
-    driver = std::make_unique<rplidar_driver::DummyLidarDriver>();
+    driver = std::make_unique<rplidar_c1m1_teaching_driver::DummyLidarDriver>();
   }
 
   void TearDown() override {

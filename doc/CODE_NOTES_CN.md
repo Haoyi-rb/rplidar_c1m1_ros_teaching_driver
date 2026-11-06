@@ -252,7 +252,7 @@ rpm 为 0 时兜底成 600。`set_motor_speed(0)` 也是 600，不是停转；�
 
 ## 7. 读完可以自己验证的三件事
 
-都用假雷达做，不需要硬件：`ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true rviz:=false`
+都用假雷达做，不需要硬件：`ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true rviz:=false`
 
 1. **两层状态**：`ros2 lifecycle set /rplidar_node deactivate`，观察驱动日志里 `[Lifecycle] Deactivating` 和
    `[FSM] Scan loop terminated` 的先后顺序，对照第 1 节 `on_deactivate` 的顺序说明。

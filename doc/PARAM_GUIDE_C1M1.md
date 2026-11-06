@@ -113,7 +113,7 @@
 **(b)** 先看系统里有没有这个设备，再看节点日志里有没有 `Connection established`：
 
      ls /dev/ttyUSB*
-     ros2 launch rplidar_driver c1m1.launch.py serial_port:=/dev/ttyUSB1
+     ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py serial_port:=/dev/ttyUSB1
      ros2 topic echo /diagnostics --once | grep -A2 'Device Info'
 
 **(c)** 填错端口时：日志反复出现 `Connection failed. Retrying...`，`/diagnostics` 停在 `Connecting`，RViz 空白。填对时：日志出现 `Connection established`，随后 `Max Range: ...`。代价是没有代价，纯粹别填错。
@@ -228,7 +228,7 @@ A 系列启动时会先用 600 转“踹”一下电机，配置值要等第一�
 **(b)**
 
      # 终端 A：不启动 RViz，只跑节点
-     ros2 launch rplidar_driver c1m1.launch.py rviz:=false
+     ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py rviz:=false
      ros2 topic echo /diagnostics --once     # 等约 1 秒，应看到 Standby (auto: no subscribers)
      ros2 topic echo /scan --once            # 再订阅一下，电机应重新转起来
 
@@ -315,7 +315,7 @@ A 系列启动时会先用 600 转“踹”一下电机，配置值要等第一�
 
 **(b)**
 
-     ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true
+     ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true
      # 日志出现 DUMMY MODE ENABLED 与 [Dummy] Virtual RPLIDAR device ready
 
 **(c)** 打开：RViz 里出现一个规则的圆环，永远不报硬件错误，非常适合排查“到底是雷达坏了还是我的参数坏了”。代价是：它完全不反映真实世界，所有测距类调参都失去意义。关闭：用真雷达。
@@ -544,7 +544,7 @@ QoS 是“这个频道怎么送数据”的约定。本驱动提供三档：
 **准备**：接上真雷达（假雷达固定约 93 Hz，和 rpm 无关，做不了这个实验）。
 
     # 终端 1
-    ros2 launch rplidar_driver c1m1.launch.py rviz:=false
+    ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py rviz:=false
     # 终端 2：一直开着
     ros2 topic hz /scan
 
@@ -584,7 +584,7 @@ QoS 是“这个频道怎么送数据”的约定。本驱动提供三档：
 
 启动命令（三个配方通用）：
 
-     ros2 launch rplidar_driver c1m1.launch.py params_file:=$HOME/my_c1m1.yaml
+     ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py params_file:=$HOME/my_c1m1.yaml
 
 ### 7.1 配方甲：RViz 画面一卡一卡 / 丢点
 
@@ -654,7 +654,7 @@ QoS 是“这个频道怎么送数据”的约定。本驱动提供三档：
 
 **第 0 步：先用假数据确认“软件链路”没问题。** 如果 dummy 能显示，问题一定在硬件或串口相关参数上。
 
-     ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true
+     ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true
 
 **第 1 步：节点活着且被激活了吗？** 本节点是生命周期节点，只启动进程是不够的。
 

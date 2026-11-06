@@ -1,5 +1,5 @@
 # RPLIDAR ROS2 DRIVER
-# Part of the rplidar_driver package. See LICENSE file for details.
+# Part of the rplidar_c1m1_teaching_driver package. See LICENSE file for details.
 
 rplidar_node:
   ros__parameters:

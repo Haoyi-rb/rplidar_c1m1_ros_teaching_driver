@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include "rplidar_node.hpp"
+#include "rplidar_c1m1_teaching_driver/rplidar_node.hpp"
 
 using lifecycle_msgs::msg::State;
 using lifecycle_msgs::msg::Transition;
@@ -42,7 +42,7 @@ TEST_F(RplidarNodeTest, FullLifecycleTest) {
   // Set a dummy serial port (not used in dummy mode, but required for init)
   options.append_parameter_override("serial_port", "/dev/null");
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
 
   // Verify initial state
   EXPECT_EQ(node->get_current_state().id(), State::PRIMARY_STATE_UNCONFIGURED);
@@ -97,7 +97,7 @@ TEST_F(RplidarNodeTest, ScanPublicationCheck) {
   options.append_parameter_override("dummy_mode", true);
   options.append_parameter_override("frame_id", "test_laser_link");
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
 
   // Quickly transition to ACTIVE state
   node->trigger_transition(
@@ -171,7 +171,7 @@ TEST_F(RplidarNodeTest, StandbyServiceTogglesScanning) {
   rclcpp::NodeOptions options;
   options.append_parameter_override("dummy_mode", true);
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
   auto client_node = std::make_shared<rclcpp::Node>("standby_test_client");
 
   node->trigger_transition(
@@ -280,7 +280,7 @@ TEST_F(RplidarNodeTest, AutoStandbyFollowsSubscribers) {
   // Keep the diagnostics rate high enough for a short test.
   options.append_parameter_override("diagnostic_updater.period", 0.2);
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
   auto client_node = std::make_shared<rclcpp::Node>("auto_standby_test_client");
 
   node->trigger_transition(
@@ -385,7 +385,7 @@ TEST_F(RplidarNodeTest, AutoStandbyIgnoresStopMotorService) {
   options.append_parameter_override("dummy_mode", true);
   options.append_parameter_override("auto_standby", true);
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
   auto client_node = std::make_shared<rclcpp::Node>("auto_standby_svc_client");
 
   node->trigger_transition(
@@ -453,7 +453,7 @@ TEST_F(RplidarNodeTest, StandbyServiceRefusedWhileInactive) {
   rclcpp::NodeOptions options;
   options.append_parameter_override("dummy_mode", true);
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
   auto client_node = std::make_shared<rclcpp::Node>("standby_inactive_client");
 
   // Configure only: the services are created in on_configure, but the scan
@@ -509,7 +509,7 @@ TEST_F(RplidarNodeTest, AutoStandbyEnableClearsManualStandby) {
   options.append_parameter_override("dummy_mode", true);
   options.append_parameter_override("auto_standby", false);
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
   auto client_node = std::make_shared<rclcpp::Node>("standby_handover_client");
 
   node->trigger_transition(
@@ -613,7 +613,7 @@ TEST_F(RplidarNodeTest, AutoStandbyEnableKeepsMotorParkedWithoutSubscribers) {
   // Sample fast enough to catch a short spin-up.
   options.append_parameter_override("diagnostic_updater.period", 0.05);
 
-  auto node = std::make_shared<rplidar_driver::RPlidarNode>(options);
+  auto node = std::make_shared<rplidar_c1m1_teaching_driver::RPlidarNode>(options);
   auto client_node = std::make_shared<rclcpp::Node>("standby_no_blip_client");
 
   node->trigger_transition(

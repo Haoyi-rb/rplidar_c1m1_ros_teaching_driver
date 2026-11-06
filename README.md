@@ -80,11 +80,11 @@ ros2 param set /rplidar_node scan_mode "Standard"
 ```bash
 # 1) 编译（在工作空间根目录执行）
 cd ~/c1m1_ros
-colcon build --packages-select rplidar_driver
+colcon build --packages-select rplidar_c1m1_teaching_driver
 source install/setup.bash
 
 # 2) 启动：自动加载 param/c1m1.yaml（460800 波特率），并拉起 RViz
-ros2 launch rplidar_driver c1m1.launch.py
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py
 ```
 
 `c1m1.launch.py` 会替你完成两件事：把参数档切到 `param/c1m1.yaml`（`serial_baudrate: 460800`、`frame_id: laser`），
@@ -93,9 +93,9 @@ ros2 launch rplidar_driver c1m1.launch.py
 ### 常用变体
 
 ```bash
-ros2 launch rplidar_driver c1m1.launch.py rviz:=false          # 没有显示器 / SSH 远程调试
-ros2 launch rplidar_driver c1m1.launch.py rviz:=false serial_port:=/dev/ttyUSB1
-ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true     # 手上没雷达，用假数据练手
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py rviz:=false          # 没有显示器 / SSH 远程调试
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py rviz:=false serial_port:=/dev/ttyUSB1
+ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true     # 手上没雷达，用假数据练手
 ```
 
 ## ✅ 怎么确认真的跑起来了
@@ -113,10 +113,10 @@ RViz 里应看到一圈激光点，Fixed Frame 用 `laser`（`c1m1.launch.py` �
 ## 🚫 不要用这些命令（它们来自上游，对 C1M1 无效）
 
 ```bash
-ros2 launch rplidar_driver rplidar.launch.py             # ✗ 加载 param/rplidar.yaml，波特率 1000000
-ros2 launch rplidar_driver rplidar_with_args.launch.py   # ✗ 同上
-ros2 launch rplidar_driver composition.launch.py         # ✗ 上游组件化示例，未配 C1M1 参数
-ros2 run rplidar_driver rplidar_node                     # ✗ 不带参数档，全用上游默认值
+ros2 launch rplidar_c1m1_teaching_driver rplidar.launch.py             # ✗ 加载 param/rplidar.yaml，波特率 1000000
+ros2 launch rplidar_c1m1_teaching_driver rplidar_with_args.launch.py   # ✗ 同上
+ros2 launch rplidar_c1m1_teaching_driver composition.launch.py         # ✗ 上游组件化示例，未配 C1M1 参数
+ros2 run rplidar_c1m1_teaching_driver rplidar_node                     # ✗ 不带参数档，全用上游默认值
 ```
 
 **典型症状**：命令不报错、节点也起来了，但 `ros2 topic hz /scan` 一直没输出——

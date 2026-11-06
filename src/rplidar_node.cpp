@@ -54,7 +54,7 @@
  * @date    2025-12-24
  */
 
-#include "rplidar_node.hpp"
+#include "rplidar_c1m1_teaching_driver/rplidar_node.hpp"
 
 #include <algorithm> // std::min
 #include <chrono>
@@ -69,7 +69,7 @@
 
 using namespace std::chrono_literals;
 
-namespace rplidar_driver {
+namespace rplidar_c1m1_teaching_driver {
 
 // ============================================================================
 // Constructor / Destructor
@@ -1199,11 +1199,11 @@ rcl_interfaces::msg::SetParametersResult RPlidarNode::parameters_callback(
   return result;
 }
 
-} // namespace rplidar_driver
+} // namespace rplidar_c1m1_teaching_driver
 
 // ============================================================================
 // registration with rclcpp_components
 // ============================================================================
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(rplidar_driver::RPlidarNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(rplidar_c1m1_teaching_driver::RPlidarNode)

@@ -89,9 +89,9 @@
 #include <thread>
 #include <vector>
 
-#include "lidar_driver_wrapper.hpp"
+#include "rplidar_c1m1_teaching_driver/lidar_driver_wrapper.hpp"
 
-namespace rplidar_driver {
+namespace rplidar_c1m1_teaching_driver {
 
 // [CN] 内层状态机，只在 Lifecycle 为 active 时由 scan_loop 线程运行。
 //   CONNECTING -> CHECK_HEALTH -> WARMUP -> RUNNING
@@ -577,6 +577,6 @@ private:
   bool initial_reset_required_ = true;
 };
 
-} // namespace rplidar_driver
+} // namespace rplidar_c1m1_teaching_driver
 
 #endif // RPLIDAR_NODE_HPP_

@@ -16,7 +16,7 @@ def generate_launch_description():
     # Define variables
     robot_id = LaunchConfiguration("robot_id")
     rviz_config_path = PathJoinSubstitution(
-        [FindPackageShare("rplidar_driver"), "config", "debug.rviz"]
+        [FindPackageShare("rplidar_c1m1_teaching_driver"), "config", "debug.rviz"]
     )
 
     # Define RViz node

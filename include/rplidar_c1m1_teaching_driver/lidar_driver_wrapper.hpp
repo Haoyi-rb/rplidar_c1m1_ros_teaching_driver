@@ -64,7 +64,7 @@
 #include "sl_lidar.h"
 #include "sl_lidar_driver.h"
 
-namespace rplidar_driver {
+namespace rplidar_c1m1_teaching_driver {
 
 /**
  * @enum ProtocolType
@@ -468,6 +468,6 @@ private:
   MockDriverState current_state_ = MockDriverState::DISCONNECTED;
 };
 
-} // namespace rplidar_driver
+} // namespace rplidar_c1m1_teaching_driver
 
 #endif // LIDAR_DRIVER_WRAPPER_HPP
