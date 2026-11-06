@@ -130,4 +130,4 @@ ros2 run rplidar_c1m1_teaching_driver rplidar_node                     # ✗ 不
 
 本仓库基于 [frozenreboot/rplidar_driver](https://github.com/frozenreboot/rplidar_driver) v1.4.2 修改，
 沿用上游同样的许可证（见 [LICENSE](LICENSE)）。
-上游作者与贡献者名单、以及 GitHub Contributors 面板里为何会出现一个 AI 条目：见 [README_CN.md](README_CN.md) 开头。
+上游作者与贡献者名单见 [README_CN.md](README_CN.md) 开头；GitHub Contributors 面板里为何会出现一个 AI 条目：见 [README_CN.md 第 9.4 节](README_CN.md#94-关于-contributors-列表里的-claude)。
