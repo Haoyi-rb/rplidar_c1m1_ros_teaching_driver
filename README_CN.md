@@ -4,7 +4,7 @@
 
 基于 [frozenreboot/rplidar_driver](https://github.com/frozenreboot/rplidar_driver) 的教学分支 `teaching/c1m1`。
 原驱动的架构和功能都保留，修复了 3 个 bug（详见第 12 节），另外加了 C1M1 配置、RViz 配置、一个看门狗示例和中文文档。
-英文原版说明见 [README.md](README.md)。
+英文原版说明已存档到 [doc/UPSTREAM_README_EN.md](doc/UPSTREAM_README_EN.md)（命令不适用 C1M1，仅供对照）。
 
 **上游作者与贡献者**：本仓库 `main` 上共 67 个提交，其中 **64 个来自上游 v1.4.2**，3 个由本教学分支新增。
 上游作者按提交数：**frozenreboot**（51；git 里显示为 `wj` 与 `JWJ | frozenreboot` 两个署名，同一邮箱）、

@@ -1,173 +1,78 @@
-> **📘 C1M1 教学版 / C1M1 Teaching Fork**
-> 本仓库是 [frozenreboot/rplidar_driver](https://github.com/frozenreboot/rplidar_driver) v1.4.2 的教学分支（`teaching/c1m1`），
-> 面向使用 RPLIDAR C1M1 的新生。下面的英文内容是上游原版说明，保持不变。
-> This is a teaching fork of upstream v1.4.2 for RPLIDAR C1M1. The English text below is the unmodified upstream README.
->
-> **中文文档 / Chinese docs**：
-> [安装 Install](README_INSTALL.md) · [新手导航 Newbie guide](README_NEWBIE.md) · [中文说明 C1M1 notes](README_CN.md) · [参数手册 Parameters](doc/PARAM_GUIDE_C1M1.md) · [代码精读 Code notes](doc/CODE_NOTES_CN.md)
->
-> 和上游的差异见 [README_CN.md 第 12 节](README_CN.md)。
-> 上游作者与贡献者名单、以及 Contributors 里为何有一个 AI 条目：见 [README_CN.md](README_CN.md) 开头。
+# C1M1 教学级 ROS 2 驱动
 
-# 🛡️ Robust RPLIDAR ROS 2 Driver
-
-[![ROS 2 Humble](https://img.shields.io/badge/ROS2-Humble-blue.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/humble/)
-[![ROS 2 Jazzy](https://img.shields.io/badge/ROS2-Jazzy-orange.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/jazzy/)
-[![ROS 2 Lyrical](https://img.shields.io/badge/ROS2-Lyrical-blueviolet.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/lyrical/)
-[![ROS 2 Rolling](https://img.shields.io/badge/ROS2-Rolling-lightgrey.svg?style=flat-square&logo=ros)](https://docs.ros.org/en/rolling/)
-[![C++17](https://img.shields.io/badge/C++-17-blue.svg?style=flat-square&logo=c%2B%2B)](https://isocpp.org/)
-[![License](https://img.shields.io/badge/License-BSD--2--Clause-green.svg?style=flat-square)](https://opensource.org/licenses/BSD-2-Clause)
-[![ROS 2 CI](https://github.com/frozenreboot/rplidar_driver/actions/workflows/ros2_ci.yaml/badge.svg)](https://github.com/frozenreboot/rplidar_driver/actions/workflows/ros2_ci.yaml)
-
-> **"Because the official driver shouldn't crash just because you pulled the plug."**
-
-A **fault-tolerant** ROS 2 driver for Slamtec RPLIDAR, built around a
-**Lifecycle State Machine** and a **thread-safe architecture**. Your robot
-keeps running even under hardware disconnection or permission failures.
+> ⚠️ **本仓库是基于原版高性能驱动的二次开发版，专为思岚 C1M1 与新手教学定制。**
+> 原版驱动的默认配置是给 S 系列用的（串口波特率 **1000000**），C1M1 用它**一个数据点都收不到**。
+> 在 C1M1 上，只认下面那一条启动命令。
 
 ---
 
-## ⚡ Why Use This?
+## 📚 文档导航
 
-Most existing RPLIDAR drivers assume the hardware never misbehaves. This
-driver assumes the opposite. Compared to the reference implementation:
+| 你的处境 | 该看哪份 |
+|---|---|
+| 第一次装 ROS 2、第一次编译、串口没权限 | **[零基础安装与配置指南](README_INSTALL.md)** |
+| 想加功能、想改参数、不知道动哪个文件 | **[新手参数调优与代码导航](README_NEWBIE.md)** |
+| 想了解真机拔插实测、踩过的坑、和上游的差异 | **[详细的真实拔插实测与填坑记录](README_CN.md)** |
+| 想搞懂某个参数改了 RViz 会变成什么样 | [参数手册 doc/PARAM_GUIDE_C1M1.md](doc/PARAM_GUIDE_C1M1.md) |
+| 想读核心函数为什么这么写 | [代码精读 doc/CODE_NOTES_CN.md](doc/CODE_NOTES_CN.md) |
 
-| Capability | Reference Driver | **This Driver** |
-| :--- | :---: | :---: |
-| **Hot-plug recovery** | Not handled | ✅ Auto-reconnect via lifecycle FSM |
-| **Permission failure reporting** | Silent failure | ✅ Explicit diagnostics |
-| **Runtime reconfiguration** | Restart required | ✅ Live RPM / scan-mode update |
-| **Component composition** | Standalone only | ✅ `rclcpp_components` support |
-| **SDK coupling** | Direct calls throughout | ✅ Interface-based abstraction layer |
-
----
-
-## 🚀 Getting Started
-
-### Option A — Binary install *(coming soon)*
-
-This package has been submitted to the ROS 2 build farm. Once it syncs, you
-will be able to install it directly:
-
-```bash
-sudo apt install ros-${ROS_DISTRO}-rplidar-driver
-```
-
-Supported distros: **Humble**, **Jazzy**, **Lyrical**, and **Rolling**.
-
-### Option B — Build from source
-
-```bash
-cd ~/ros2_ws/src
-git clone https://github.com/frozenreboot/rplidar_driver.git
-cd ..
-
-# Install dependencies
-sudo apt update
-rosdep update
-rosdep install --from-paths src --ignore-src -r -y
-
-# Build the workspace
-colcon build --symlink-install
-```
-
-### Quick Launch
-
-```bash
-ros2 launch rplidar_driver rplidar.launch.py serial_port:=/dev/ttyUSB0
-```
-
-### Dynamic Reconfigure (Runtime)
-
-You can change the motor speed without killing the node:
-
-```bash
-ros2 param set /rplidar_node rpm 1000
-ros2 param set /rplidar_node scan_mode DenseBoost
-```
-
-### Standby (Motor Control)
-
-Park the motor without leaving the ACTIVE state. The serial connection, the
-scan thread and the publishers all stay up, so waking costs only the motor
-spin-up time:
-
-```bash
-ros2 service call /stop_motor std_srvs/srv/Trigger
-ros2 service call /start_motor std_srvs/srv/Trigger
-```
-
-Or let the driver follow demand. With `auto_standby` the motor stops while
-nobody subscribes to `scan` (or to `cloud`, when `publish_point_cloud` is
-enabled) and restarts as soon as somebody does:
-
-```bash
-ros2 param set /rplidar_node auto_standby true
-```
-
-While `auto_standby` is enabled the two services are rejected, so the
-subscriber count stays the single source of truth.
-
-Toggling the parameter hands the motor over, and the new owner decides from
-scratch: a pending `stop_motor` standby is dropped, and switching back off
-leaves the motor running.
-
-Diagnostics say *why* the motor is idle, which is usually the question:
-
-```bash
-ros2 topic echo /diagnostics    # "Standby (auto: no subscribers)" vs "Standby (motor off)"
-```
+推荐顺序：**安装 → 新手导航 → 中文说明**。这三份读完，你就能独立改这个驱动了。
 
 ---
 
-## 🧪 Call for Experiments: "Does it survive?"
+## 🚀 唯一正确的启动方式（C1M1）
 
-We need your help to validate this driver on various robots!
-If you use this driver, please **stress-test** it (e.g., unplug USB while
-scanning, change RPM dynamically) and share your results.
+```bash
+# 1) 编译（在工作空间根目录执行）
+cd ~/c1m1_ros
+colcon build --packages-select rplidar_driver
+source install/setup.bash
 
-### 📢 How to Submit a Report
-Please open an issue with the title `[Experiment] Your_Robot_Name` and include:
-1. **Lidar Model:** (e.g., A1, A2, S1...)
-2. **Recovery Log:** (Copy paste the terminal output when you unplug/replug)
-3. **Screenshot:** `rqt_graph` or `rviz2`
+# 2) 启动：自动加载 param/c1m1.yaml（460800 波特率），并拉起 RViz
+ros2 launch rplidar_driver c1m1.launch.py
+```
 
-👉 [**Submit your Experiment Report Here**](https://github.com/frozenreboot/rplidar_driver/issues/new)
+`c1m1.launch.py` 会替你完成两件事：把参数档切到 `param/c1m1.yaml`（`serial_baudrate: 460800`、`frame_id: laser`），
+以及自动跑完 lifecycle 的 configure → activate。
 
----
+### 常用变体
 
-## 🏗️ Architecture
+```bash
+ros2 launch rplidar_driver c1m1.launch.py rviz:=false          # 没有显示器 / SSH 远程调试
+ros2 launch rplidar_driver c1m1.launch.py rviz:=false serial_port:=/dev/ttyUSB1
+ros2 launch rplidar_driver c1m1.launch.py dummy_mode:=true     # 手上没雷达，用假数据练手
+```
 
-This driver uses a **3-Layer Design** to decouple ROS 2 logic from the vendor SDK.
+## ✅ 怎么确认真的跑起来了
 
-- **Node Layer:** Handles Lifecycle & Parameters.
-- **Wrapper Layer:** Handles Threading & Mutex.
-- **SDK Layer:** Raw data fetching.
+```bash
+ros2 node list                    # 应看到 /rplidar_node
+ros2 lifecycle get /rplidar_node  # 应显示 active
+ros2 topic hz /scan               # C1M1 实测约 10 Hz
+```
 
-![Architecture Diagram](./doc/architecture.png)
-
----
-
-## 👥 Maintainers
-
-- **frozenreboot** — Architecture & core development · [Tech Log](https://frozenreboot.github.io/)
-- **cosmicog** ([@cosmicog](https://github.com/cosmicog)) — Co-maintainer
-- **Błażej Sowa** ([@bjsowa](https://github.com/bjsowa)) — Release & packaging
-
-Based on the original work by RoboPeak & Slamtec.
+RViz 里应看到一圈激光点，Fixed Frame 用 `laser`（`c1m1.launch.py` 默认帮你打开这份 RViz 配置）。
 
 ---
 
-## 🤖 AI-Assisted Development Disclosure
+## 🚫 不要用这些命令（它们来自上游，对 C1M1 无效）
 
-In compliance with the [OSRF Policy on the Use of Generative AI in Contributions](https://github.com/openrobotics/osrf-policies-and-procedures/blob/main/OSRF%20Policy%20on%20the%20Use%20of%20Generative%20Tools%20(%E2%80%9CGenerative%20AI%E2%80%9D)%20in%20Contributions.md) (Effective May 2025), we explicitly disclose the use of Generative AI tools in the development of this driver.
+```bash
+ros2 launch rplidar_driver rplidar.launch.py             # ✗ 加载 param/rplidar.yaml，波特率 1000000
+ros2 launch rplidar_driver rplidar_with_args.launch.py   # ✗ 同上
+ros2 launch rplidar_driver composition.launch.py         # ✗ 上游组件化示例，未配 C1M1 参数
+ros2 run rplidar_driver rplidar_node                     # ✗ 不带参数档，全用上游默认值
+```
 
-* **Tools Used:**
-    * **Anthropic Claude:** Release engineering support, refactoring suggestions, and documentation.
-    * **Google Gemini:** Boilerplate code generation and test infrastructure scaffolding.
-    * **OpenAI ChatGPT:** Refactoring suggestions and documentation formatting.
-* **Verification:**
-    * All AI-generated content has been **manually reviewed, tested, and verified** by the maintainers.
-    * The logic, memory safety, and ROS 2 lifecycle state transitions have been rigorously checked to ensure system stability.
-* **Note:**
-    * Contributions follow the `Generated-by:` tag convention in commit messages as per the OSRF guidelines.
+**典型症状**：命令不报错、节点也起来了，但 `ros2 topic hz /scan` 一直没输出——
+因为 C1M1 是以 460800 会话的，听不懂按 1000000 波特率发出的指令。
+
+上游原始英文 README 已存档到 [doc/UPSTREAM_README_EN.md](doc/UPSTREAM_README_EN.md)，仅供对照，其中的命令同样不适用于 C1M1。
+
+---
+
+## 📄 许可与来源
+
+本仓库基于 [frozenreboot/rplidar_driver](https://github.com/frozenreboot/rplidar_driver) v1.4.2 修改，
+沿用上游同样的许可证（见 [LICENSE](LICENSE)）。
+上游作者与贡献者名单、以及 GitHub Contributors 面板里为何会出现一个 AI 条目：见 [README_CN.md](README_CN.md) 开头。
