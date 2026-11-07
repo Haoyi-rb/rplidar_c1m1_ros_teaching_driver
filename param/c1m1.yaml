@@ -23,8 +23,10 @@ rplidar_node:
     # 想用 DenseBoost：请配合下面 interpolated_rays + computed_ray_count，别单独开。
     scan_mode: "Standard"
     # 电机转速（转/分）。0 = 驱动按 600 转下发（约 10 Hz）。
-    # 【C1M1 实测】改成 360/480/720/900，/scan 都是 10.00 Hz：这台 C1（FW 1.2）不执行调速命令，
-    # 但 ros2 param set 照样显示成功。改了之后一定要用 ros2 topic hz /scan 验证。
+    # 【C1M1 实测 2026-11-07，打补丁后】调速有效，C1 走 RPM 闭环，频率 ≈ rpm÷60：
+    # 480/600/720/900 -> 8.006/10.015/12.014/15.011 Hz。转速越高每帧点数越少（角分辨率变粗）。
+    # 旧驱动下恒 10 Hz 是内置 SDK 把 C1(0x41) 误判成 A 系所致；启动日志应为 motorCtrlSupport = 2 (RPM)。
+    # 验证用 examples/scan_probe.py，别用不带 --window 的 ros2 topic hz（长平均会滞后几分钟）。
     # 实验步骤见 doc/PARAM_GUIDE_C1M1.md 第 6 节。
     rpm: 0
     # 没人订阅 /scan 时自动停电机（串口不断，唤醒只要等电机加速）。

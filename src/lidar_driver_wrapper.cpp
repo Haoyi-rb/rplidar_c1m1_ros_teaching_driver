@@ -145,6 +145,21 @@ bool RealLidarDriver::connect(const std::string &port, sl_u32 baudrate,
     return false;
   }
 
+  // [CN] 打印 SDK 选中的调速通道：0=None(只切 DTR) 1=PWM(A 系) 2=RPM(HQ_MOTOR_SPEED_CTRL)。
+  // rpm 参数“设了没反应”时先看这一行。连接阶段还没开始扫描，这里重查一次没有副作用。
+  MotorCtrlSupport motor_ctrl = MotorCtrlSupportNone;
+  if (SL_IS_OK(drv_->checkMotorCtrlSupport(motor_ctrl, 500))) {
+    const char *names[] = {"None (DTR only)", "PWM", "RPM"};
+    const int idx = static_cast<int>(motor_ctrl);
+    std::cout << "[Driver] Model ID " << static_cast<int>(devinfo_.model)
+              << " -> motorCtrlSupport = " << idx << " ("
+              << ((idx >= 0 && idx <= 2) ? names[idx] : "unknown") << ")"
+              << std::endl;
+  } else {
+    std::cerr << "[Driver] checkMotorCtrlSupport() failed; rpm may be ignored."
+              << std::endl;
+  }
+
   return true;
 }
 

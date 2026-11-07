@@ -142,7 +142,7 @@ ros2 lifecycle get /rplidar_node
 - `rpm` 是「每分钟转多少圈」。600 就是每秒 10 圈，和 `ros2 topic hz /scan` 的 10 Hz 对得上：**转一圈发一帧**，所以频率 ≈ rpm ÷ 60。这个换算帮你在任何设备上反推真实转速。
 - `rpm: 0` 不是「停转」，而是「用型号默认值」。`RealLidarDriver::set_motor_speed` 里把 0 换成 600，所以 0 和 600 效果一样。真想停电机，用 `/stop_motor` 服务或 `auto_standby`。
 - 热生效还是重启：热生效。`parameters_callback` 里直接调 `set_motor_speed`，日志打印 `[Dynamic] Updating RPM to`，电机不用重启。合法范围 0 到 1200，超了会被拒并打印 `[Param] Rejecting RPM`。
-- 但「命令成功」不等于「硬件真变了」：C1M1 实测怎么设都还是 10 Hz（`README_CN.md` 里有实测表）。原因是调速命令只发不等回应，驱动无从知道它失败了。
+- 但「命令成功」不等于「硬件真变了」：C1M1 在旧驱动下怎么设都是 10 Hz，原因是内置 SDK 按 Model ID 高 4 位把 C1 当成 A 系、转速命令没发出去；调速命令又只发不等回应，驱动无从知道。本包已修复，实测 480/600/720/900 → 8.01/10.02/12.01/15.01 Hz（`README_CN.md` 第 5 节有实测表）。
 - 改完怎么确认，只有一条路：
 
 ```bash

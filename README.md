@@ -50,7 +50,7 @@
 > 具体请查阅 [参数调优指南](README_NEWBIE.md)。
 
 ```bash
-# 尝试修改转速（因硬件限制，C1 上无效；用 ros2 topic hz /scan 观察实际频率）
+# 修改转速（C1 走 RPM 闭环，频率 ≈ rpm÷60）。用 examples/scan_probe.py 测，别用不带 --window 的 ros2 topic hz
 ros2 param set /rplidar_node rpm 480
 
 # 尝试切换扫描模式（部分固件可能支持）

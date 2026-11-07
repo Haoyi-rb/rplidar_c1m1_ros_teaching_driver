@@ -196,14 +196,31 @@ ros2 lifecycle set /rplidar_node activate     # 把雷达从待机叫醒
 每次 `param set` 都显示 `Set parameter successful`，驱动日志也打印 `Updating RPM to ...`，但雷达始终是 10 Hz（600 RPM）。
 超出 0~1200 的值（比如 9999）会被拒绝：`RPM must be between 0 and 1200`。
 
-> ⚠️ **避坑：C1 改 rpm 无效**
-> 在 C1M1（FW 1.2）上实测，`rpm` 设成多少，雷达都按 10 Hz 转，而 `param set` 依然显示成功。
-> 原因是雷达固件没有执行调速命令，而这个命令不等回应，驱动无从知道它失败了。
-> 想确认转速到底变没变，只有一个办法：`ros2 topic hz /scan`，频率约等于 rpm ÷ 60。
-> 换了别的型号或升级了固件，记得重新测一次。
+> ✅ **C1M1 调速已验证有效（2026-11-07，FW 1.2，打补丁后）**
+> 启动日志：`[Driver] Model ID 65 -> motorCtrlSupport = 2 (RPM)`。
+>
+> | 设定 rpm | `/scan` 实测（`examples/scan_probe.py`，5 s） | 折算 rpm | 每帧点数 |
+> |---|---|---|---|
+> | 480 | 8.006 Hz | 480 | 388 |
+> | 600 | 10.015 Hz | 601 | 253 |
+> | 720 | 12.014 Hz | 721 | 237 |
+> | 900 | 15.011 Hz | 901 | 177 |
+>
+> C1 走 RPM 通道（`HQ_MOTOR_SPEED_CTRL`），由雷达固件闭环控制转速，频率 ≈ rpm ÷ 60，四档误差都在 ±0.02 Hz 以内。
+> 转速越高，每帧点数越少：频率提高的代价是角分辨率变粗。每帧点数随场景变化，表中是当场实测值。
+> 从 900 降到 480，等 6 秒后测得 8.006 Hz，没有观察到明显的转速惯性。
 
-细节：SDK 按型号判断 C1 支持转速控制，于是发出 `SL_LIDAR_CMD_HQ_MOTOR_SPEED_CTRL`。这个命令是
-"只发不等回应"的，所以 SDK 返回 `SL_RESULT_OK`。就算驱动检查返回值，也发现不了问题。
+**旧驱动为什么"设了没反应"**：本包内置 SDK 在 `connect()` 里调用 `checkMotorCtrlSupport()`，按 Model ID 的**高 4 位**选调速通道：
+高 4 位 ≥ 6 才走 `MotorCtrlSupportRpm`，2~5 被当成 A2/A3 去探测 PWM 电机板。
+C1 的 Model ID 是 65（0x41），高 4 位是 4，被归入 A 系分支，转速命令从没发出去。调速命令只发不等回应，
+SDK 照样返回 `SL_RESULT_OK`，所以 `param set` 显示成功。上面旧表里的恒定 10 Hz 就是这个原因，跟硬件能力无关。
+本包在 `src/sdk/src/sl_lidar_driver.cpp` 让 0x41 强制走 RPM 通道，并在 `src/lidar_driver_wrapper.cpp` 连接后打印
+`motorCtrlSupport`（0=None，1=PWM，2=RPM）。
+
+> ⚠️ **测频率别用不带 `--window` 的 `ros2 topic hz`。** 它对启动以来最多 10000 条消息求平均，改完 rpm 后
+> 显示值要几分钟才慢慢靠近新值，看起来像电机"有很大惯性延迟"。本包作者就被它骗过一次：以为 900 → 480
+> 要 1 分钟才稳定，改用 `examples/scan_probe.py`（按消息时间戳、每次重新统计）测，设 480 后 5 秒内连测三次都是 8.01 Hz。
+> 改 rpm 后请用：`python3 examples/scan_probe.py 5`，或 `ros2 topic hz /scan --window 20`。
 
 **教训**：参数设置成功 ≠ 硬件真的变了。验证要看实际效果，不要只看命令返回值。
 
@@ -434,7 +451,7 @@ ros2 lifecycle get /rplidar_node      # 应该是 active
 
 ## 10. 已知限制
 
-**C1 改 rpm 无效**：见第 5 节的避坑提示。
+**C1 调速**：旧驱动下无效，原因是内置 SDK 把 C1 误判成 A 系；本包已修复并真机验证（480/600/720/900 → 8.01/10.02/12.01/15.01 Hz）。测频率的坑见第 5 节。
 
 **拔着 USB 时 `ros2 param set` 仍然要等几秒**
 第 9.3 节的修复只让诊断回调不再抢 `driver_mutex_`。参数回调要通过 `driver_` 往串口发命令，必须持有这把锁，

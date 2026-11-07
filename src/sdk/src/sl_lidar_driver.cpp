@@ -381,6 +381,7 @@ namespace sl {
         enum {
             A2A3_LIDAR_MINUM_MAJOR_ID  = 2,
             BUILTIN_MOTORCTL_MINUM_MAJOR_ID = 6,
+            C1_LIDAR_MODEL_ID = 0x41,  // teaching patch, see checkMotorCtrlSupport()
         };
 
 
@@ -844,6 +845,14 @@ namespace sl {
                 ans = getDeviceInfo(devInfo, 500);
                 if (!ans) return ans;
                 sl_u8 majorId = devInfo.model >> 4;
+                // [CN][teaching patch] RPLIDAR C1 的 Model ID 是 65 (0x41)，高 4 位 = 4，
+                // 按下面的阈值（>= 6 才算内置转速闭环）会被误归入 A2/A3 的 PWM 探测分支，
+                // 结果 setMotorSpeed() 永远发不出 HQ_MOTOR_SPEED_CTRL。这里对 C1 单独放行。
+                // 是否真的让 C1 调速生效：待 C1M1 真机复测（见 README_CN 第 5 节）。
+                if (devInfo.model == C1_LIDAR_MODEL_ID) {
+                        support = MotorCtrlSupportRpm;
+                        return ans;
+                }
                 if (majorId >= BUILTIN_MOTORCTL_MINUM_MAJOR_ID) {
                         support = MotorCtrlSupportRpm;
                         return ans;
