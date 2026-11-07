@@ -5,6 +5,23 @@
 ![Status](https://img.shields.io/badge/Status-Stable-green)
 ![LiDAR](https://img.shields.io/badge/LiDAR-RPLIDAR%20C1M1-blueviolet)
 
+## 📌 重要更新：修复思岚 SDK 型号误判导致的调速失效
+
+> **背景与修复**：此前实测发现，C1M1 雷达在修改 `rpm` 时始终恒定在 10Hz，且 `param set` 返回成功。经排查底层源码，发现内置 SDK 的 `checkMotorCtrlSupport()` 存在型号识别缺陷：将 C1（Model ID 0x41）误判为老款 A 系列，未能下发正确的闭环 RPM 控制指令。
+> 本仓库已通过补丁强制 0x41 走 `MotorCtrlSupportRpm` 通道，并在连接时打印 `motorCtrlSupport` 状态以便排查。
+>
+> **真机实测数据**（基于 `examples/scan_probe.py` 探针脚本）：
+> - 设定 `rpm 480`：实测 **8.006 Hz**
+> - 设定 `rpm 600`：实测 **10.015 Hz**
+> - 设定 `rpm 720`：实测 **12.014 Hz**
+> - 设定 `rpm 900`：实测 **15.011 Hz**
+>
+> *(注：频率 ≈ rpm ÷ 60，四档误差均在 ±0.02 Hz 以内)*
+>
+> ⚠️ **测试避坑**：请勿使用未带 `--window` 参数的 `ros2 topic hz` 验证调速效果。其长周期平均算法会掩盖真实的频率突变，造成“电机减速极慢”的假象。推荐使用本项目提供的 `examples/scan_probe.py` 进行精确测量。
+
+---
+
 > ⚠️ **本仓库是基于原版高性能驱动的二次开发版，专为思岚 C1M1 与新手教学定制。**
 > 原版驱动的默认配置是给 S 系列用的（串口波特率 **1000000**），C1M1 用它**一个数据点都收不到**。
 > 在 C1M1 上，**启动只认「🚀 唯一正确的启动方式」那一节**里的命令。
@@ -31,42 +48,38 @@
 
 | 限制 | 实测表现 | 怎么验证 |
 |---|---|---|
-| **不支持动态修改 RPM** | 设 360 / 480 / 600 / 720 / 900，`/scan` 始终约 10 Hz；`param set` 仍返回成功 | `ros2 topic hz /scan` |
 | RPM 取值范围 0~1200 | 超出（如 9999）被参数回调拒绝：`RPM must be between 0 and 1200` | `ros2 param set /rplidar_node rpm 9999` |
 | 串口波特率固定 460800 | 用 1000000（上游默认）一个点都收不到，SDK 报数据可能损坏 | `ros2 param get /rplidar_node serial_baudrate` |
 | 在线开 `publish_point_cloud` 不生效 | 只翻标志位、打印日志，`/cloud` 不会出现，需 deactivate → activate | `ros2 topic list \| grep cloud` |
 
-> ⚠️ **C1M1（FW 1.2）固件物理限制：不支持动态修改 RPM，转速恒定约 10 Hz。**
-> 请通过 `ros2 topic hz /scan` 验证，具体见 [参数调优指南](README_NEWBIE.md)。
+> ✅ **C1M1 调速已验证有效（需本包补丁）**：启动日志应出现 `motorCtrlSupport = 2 (RPM)`，频率 ≈ rpm ÷ 60。
 
-完整实测数据（5 组 rpm 对照表）见 [README_CN.md 第 5 节](README_CN.md)。
+完整实测数据（含旧驱动对照）见 [README_CN.md 第 5 节](README_CN.md)。
 
 ---
 
 ## ⚙️ 进阶操作：修改雷达参数
 
-> ⚠️ **硬件限制警告（C1 专属）**：思岚 C1M1（FW 1.2）物理硬件**不支持动态修改电机转速**。
-> 即便通过参数设置了，实际转速也始终锁定在 10Hz 左右。请勿在此浪费时间，
-> 具体请查阅 [参数调优指南](README_NEWBIE.md)。
+> ✅ **C1M1 调速已验证有效（需本包补丁）**：详见顶部「重要更新」与 [参数调优指南](README_NEWBIE.md)。
 
 ```bash
-# 修改转速（C1 走 RPM 闭环，频率 ≈ rpm÷60）。用 examples/scan_probe.py 测，别用不带 --window 的 ros2 topic hz
+# 修改转速（C1 走 RPM 闭环，频率 ≈ rpm÷60）。
+# 必须用 examples/scan_probe.py 测，不要用不带 --window 的 ros2 topic hz，历史平均会导致显示滞后。
 ros2 param set /rplidar_node rpm 480
+python3 examples/scan_probe.py 5
 
 # 尝试切换扫描模式（部分固件可能支持）
 ros2 param set /rplidar_node scan_mode "Standard"
 ```
 
-命令都会返回 `Set parameter successful`，日志也会打印 `Updating RPM to 480`——**但转速不会变**。
-这是硬件行为，不是你配错了。本仓库真机实测数据如下（[README_CN.md 第 5 节](README_CN.md)）：
+本仓库真机实测数据如下（C1M1 FW 1.2，打补丁后，`examples/scan_probe.py` 测得；详见 [README_CN.md 第 5 节](README_CN.md)）：
 
-| 设置的 rpm | `/scan` 实测频率 |
+| 设定的 rpm | /scan 实测频率 |
 |---|---|
-| 360 | 9.997 Hz |
-| 480 | 10.004 Hz |
-| 600 | 10.009 Hz |
-| 720 | 10.010 Hz |
-| 900 | 10.007 Hz |
+| 480 | 8.006 Hz |
+| 600 | 10.015 Hz |
+| 720 | 12.014 Hz |
+| 900 | 15.011 Hz |
 
 顺带两个已知边界：
 
@@ -103,7 +116,7 @@ ros2 launch rplidar_c1m1_teaching_driver c1m1.launch.py dummy_mode:=true     # �
 ```bash
 ros2 node list                    # 应看到 /rplidar_node
 ros2 lifecycle get /rplidar_node  # 应显示 active
-ros2 topic hz /scan               # C1M1 实测约 10 Hz
+ros2 topic hz /scan --window 20   # 默认 rpm 0（=600）时 C1M1 实测约 10 Hz
 ```
 
 RViz 里应看到一圈激光点，Fixed Frame 用 `laser`（`c1m1.launch.py` 默认帮你打开这份 RViz 配置）。

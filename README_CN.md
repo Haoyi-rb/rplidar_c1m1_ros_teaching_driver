@@ -174,7 +174,7 @@ ros2 lifecycle set /rplidar_node activate     # 把雷达从待机叫醒
 
 | 参数 | 命令示例 | 取值 | 效果 |
 |---|---|---|---|
-| `rpm` | `ros2 param set /rplidar_node rpm 600` | 0~1200，0 = 型号默认 | 立即改转速，电机不停。**C1M1 实测无效，见下方** |
+| `rpm` | `ros2 param set /rplidar_node rpm 600` | 0~1200，0 = 型号默认 | 立即改转速，电机不停。**C1M1 需本包补丁才生效，见下方** |
 | `scan_mode` | `ros2 param set /rplidar_node scan_mode Standard` | 设备支持的模式名 | **会停电机再重启**，失败自动回到默认模式 |
 | `auto_standby` | `ros2 param set /rplidar_node auto_standby true` | true/false | 没人订阅 `/scan` 时自动停电机 |
 | `publish_point_cloud` | `ros2 param set /rplidar_node publish_point_cloud true` | true/false | 额外发布 `/cloud`（PointCloud2）。**注意：在线打开只翻转内部标志并打印日志，并不会立刻产生 `/cloud`** —— `cloud_pub_` 是 lifecycle 发布者，`on_activate()` 只在节点 ACTIVE 且该参数已为 true 时才调用。要真的出点云，先 `ros2 lifecycle set /rplidar_node deactivate` 再 `activate`，或重新 launch |
@@ -183,9 +183,9 @@ ros2 lifecycle set /rplidar_node activate     # 把雷达从待机叫醒
 - 驱动没连上雷达时（比如 USB 拔着），所有在线修改都会被拒绝：`Driver not ready`。
 - 查看当前值：`ros2 param get /rplidar_node rpm`。
 
-**C1M1 的 rpm 实测：改了也不变**
+**C1M1 的 rpm 实测（旧驱动，打补丁前，仅作对照）：改了也不变**
 
-| 设置的 rpm | `/scan` 实测频率 |
+| 设置的 rpm | `/scan` 实测频率（旧驱动） |
 |---|---|
 | 600 | 10.009 Hz |
 | 480 | 10.004 Hz |
@@ -193,7 +193,7 @@ ros2 lifecycle set /rplidar_node activate     # 把雷达从待机叫醒
 | 360 | 9.997 Hz |
 | 900 | 10.007 Hz |
 
-每次 `param set` 都显示 `Set parameter successful`，驱动日志也打印 `Updating RPM to ...`，但雷达始终是 10 Hz（600 RPM）。
+旧驱动下每次 `param set` 都显示 `Set parameter successful`，驱动日志也打印 `Updating RPM to ...`，但雷达始终是 10 Hz（600 RPM）。打补丁后的数据见下方。
 超出 0~1200 的值（比如 9999）会被拒绝：`RPM must be between 0 and 1200`。
 
 > ✅ **C1M1 调速已验证有效（2026-11-07，FW 1.2，打补丁后）**
